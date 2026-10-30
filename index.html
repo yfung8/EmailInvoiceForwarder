@@ -1,0 +1,1963 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Invoice forwarder setup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F2F5F4; --panel: #FFFFFF; --ink: #15232A; --muted: #55676E; --line: #D3DDDA; --line-strong: #A9BAB6;
+  --send: #0B7A5E; --send-soft: #E1F2EB; --send-ink: #06553F;
+  --review: #9A5B00; --review-soft: #FCEFD8; --review-ink: #6E4100;
+  --exclude: #B3261E; --exclude-soft: #FBE6E4; --exclude-ink: #84190F;
+  --ignore: #66767C; --ignore-soft: #ECF0EF;
+  --focus: #1D63D8; --code-bg: #10201F; --code-ink: #D6E7E2;
+  --radius: 6px;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0D1617; --panel: #142123; --ink: #E3EDEB; --muted: #96AAAE; --line: #26393C; --line-strong: #3E5559;
+    --send: #3FC196; --send-soft: #10342A; --send-ink: #8BE3C3;
+    --review: #E6A646; --review-soft: #3A2A10; --review-ink: #F5CD8E;
+    --exclude: #F08A80; --exclude-soft: #3D1B19; --exclude-ink: #F8B9B2;
+    --ignore: #8FA1A5; --ignore-soft: #1C2B2D;
+    --focus: #7AA7FF; --code-bg: #091112; --code-ink: #CFE2DD;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0D1617; --panel: #142123; --ink: #E3EDEB; --muted: #96AAAE; --line: #26393C; --line-strong: #3E5559;
+  --send: #3FC196; --send-soft: #10342A; --send-ink: #8BE3C3;
+  --review: #E6A646; --review-soft: #3A2A10; --review-ink: #F5CD8E;
+  --exclude: #F08A80; --exclude-soft: #3D1B19; --exclude-ink: #F8B9B2;
+  --ignore: #8FA1A5; --ignore-soft: #1C2B2D;
+  --focus: #7AA7FF; --code-bg: #091112; --code-ink: #CFE2DD;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: inherit; }
+[hidden] { display: none !important; }
+html { scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 80px); }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 17px; line-height: 1.55;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--panel); }
+a { color: var(--send-ink); }
+h1, h2, h3 { line-height: 1.2; margin: 0; }
+p { margin: 0 0 12px; }
+code, .mono { font-family: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 0.86em; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* Header */
+.top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--panel); border-bottom: 1px solid var(--line);
+}
+.top-inner { max-width: 1200px; margin: 0 auto; padding: 14px 24px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 12px; margin-right: auto; min-width: 0; }
+.brand-mark { width: 34px; height: 34px; flex: none; }
+.brand h1 { font-size: 20px; }
+.brand p { margin: 0; color: var(--muted); font-size: 14px; }
+.status { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 14px; color: var(--muted); }
+.pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; background: var(--review-soft); color: var(--review-ink); }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  padding: 9px 16px; border-radius: var(--radius); border: 1.5px solid var(--line-strong);
+  background: var(--panel); color: var(--ink); font-weight: 700; font-size: 15px;
+}
+.btn:hover { border-color: var(--ink); }
+.btn.primary { background: var(--send); border-color: var(--send); color: #fff; }
+:root[data-theme="dark"] .btn.primary { color: #062B21; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.primary { color: #062B21; } }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+.btn.small { padding: 5px 11px; font-size: 14px; }
+.linkbtn { background: none; border: 0; padding: 0; color: var(--send-ink); text-decoration: underline; cursor: pointer; font-weight: 700; }
+.linkbtn.danger { color: var(--exclude-ink); }
+
+/* Layout */
+.shell { max-width: 1200px; margin: 0 auto; padding: 28px 24px 80px; display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 44px; }
+.steps { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 88px); align-self: start; }
+.steps ol { list-style: none; margin: 0; padding: 0; counter-reset: step; }
+.steps li { counter-increment: step; }
+.steps a {
+  display: flex; gap: 12px; align-items: baseline; padding: 9px 12px; border-left: 3px solid transparent;
+  text-decoration: none; color: var(--muted); font-weight: 700; font-size: 16px;
+}
+.steps a::before { content: counter(step); font-variant-numeric: tabular-nums; min-width: 1.1em; color: var(--line-strong); }
+.steps a:hover { color: var(--ink); }
+.steps a[aria-current="page"] { color: var(--ink); border-left-color: var(--send); background: var(--panel); }
+.steps a[aria-current="page"]::before { color: var(--send); }
+.steps .badge { margin-left: auto; white-space: nowrap; align-self: center; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--review-soft); color: var(--review-ink); }
+main { min-width: 0; max-width: 860px; }
+section[data-view] { display: none; }
+section[data-view].active { display: block; }
+section h2 { font-size: 32px; margin-bottom: 10px; letter-spacing: -0.01em; }
+.lead { color: var(--muted); font-size: 18px; max-width: 64ch; margin-bottom: 26px; }
+.group { margin: 0 0 34px; padding-top: 22px; border-top: 1px solid var(--line); }
+.group > h3 { font-size: 20px; margin-bottom: 6px; }
+.group > p { color: var(--muted); max-width: 68ch; }
+
+/* Route strip: the three outcomes */
+.route { display: grid; grid-template-columns: auto 1fr; gap: 0 18px; align-items: stretch; margin: 0 0 30px; }
+.route-src { display: flex; align-items: center; font-weight: 700; padding: 10px 0; }
+.route-lanes { display: grid; gap: 6px; }
+.lane { display: flex; gap: 12px; align-items: baseline; padding: 8px 14px; border-left: 5px solid; background: var(--panel); }
+.lane b { min-width: 9.5em; }
+.lane span { color: var(--muted); font-size: 15px; }
+.lane.send { border-color: var(--send); } .lane.send b { color: var(--send-ink); }
+.lane.review { border-color: var(--review); } .lane.review b { color: var(--review-ink); }
+.lane.exclude { border-color: var(--exclude); } .lane.exclude b { color: var(--exclude-ink); }
+
+/* Fields */
+label.f, .f { display: block; margin-bottom: 16px; }
+.f > span, .f-label { display: block; font-weight: 700; margin-bottom: 5px; font-size: 15px; }
+.f small, .hint { display: block; color: var(--muted); font-size: 14px; margin-top: 5px; max-width: 68ch; }
+input[type=text], input[type=email], input[type=number], input[type=tel], select, textarea {
+  width: 100%; padding: 9px 12px; border: 1.5px solid var(--line-strong); border-radius: var(--radius);
+  background: var(--panel); min-height: 44px;
+}
+textarea { resize: vertical; line-height: 1.45; }
+input:hover, select:hover, textarea:hover { border-color: var(--ink); }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+.check { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 14px; cursor: pointer; }
+.check input { width: 20px; height: 20px; margin-top: 3px; flex: none; accent-color: var(--send); }
+.check b { display: block; }
+.check small { color: var(--muted); font-size: 14px; }
+.radio-set { display: grid; gap: 8px; margin-bottom: 16px; }
+.radio-set label { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border: 1.5px solid var(--line); border-radius: var(--radius); background: var(--panel); cursor: pointer; }
+.radio-set label:has(input:checked) { border-color: var(--send); }
+.radio-set input { accent-color: var(--send); width: 18px; height: 18px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.chip { border: 1.5px dashed var(--line-strong); background: transparent; border-radius: 999px; padding: 3px 12px; font-size: 14px; cursor: pointer; }
+.chip:hover { border-style: solid; }
+.state { display: inline-block; font-size: 14px; font-weight: 700; padding: 2px 10px; border-radius: 999px; margin-top: 6px; }
+.state.ok { background: var(--send-soft); color: var(--send-ink); }
+.state.todo { background: var(--review-soft); color: var(--review-ink); }
+
+/* Stores */
+.store { display: grid; grid-template-columns: 44px 1fr; gap: 0 14px; padding: 20px 0; border-top: 1px solid var(--line); }
+.store:first-child { border-top: 0; padding-top: 0; }
+.store-num { font-size: 26px; font-weight: 700; color: var(--line-strong); font-variant-numeric: tabular-nums; line-height: 1.2; }
+.store-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.store-head h3 { font-size: 19px; }
+.store-head .linkbtn { margin-left: auto; font-size: 14px; }
+.faxprev { font-size: 13px; color: var(--muted); margin-top: 4px; word-break: break-all; }
+
+/* Rules table */
+.rules { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+.rules th, .rules td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.rules th { font-size: 14px; color: var(--muted); }
+.rules td:first-child { font-weight: 700; }
+.rules select { max-width: 260px; }
+
+/* Address book */
+.book { width: 100%; border-collapse: collapse; }
+.book th { text-align: left; font-size: 14px; color: var(--muted); padding: 6px 6px; }
+.book td { padding: 6px; vertical-align: top; border-top: 1px solid var(--line); }
+.book td:last-child { width: 1%; white-space: nowrap; vertical-align: middle; }
+.empty { padding: 18px; border: 1.5px dashed var(--line-strong); border-radius: var(--radius); color: var(--muted); margin-bottom: 14px; }
+
+/* Labels preview */
+.labels { list-style: none; padding: 0; margin: 0 0 10px; }
+.labels li { display: grid; grid-template-columns: minmax(0, 15em) 1fr; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.labels code { font-weight: 500; word-break: break-word; }
+.labels span { color: var(--muted); font-size: 15px; }
+.who { font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px; margin-right: 6px; background: var(--ignore-soft); color: var(--muted); }
+
+/* Tester */
+.presets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.tester { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+.rxlabel { border: 2px solid var(--ignore); border-radius: var(--radius); background: var(--panel); overflow: hidden; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 96px); }
+.rxlabel header { padding: 14px 18px; background: var(--ignore-soft); border-bottom: 2px solid var(--ignore); }
+.rxlabel header small { display: block; font-size: 13px; font-weight: 700; color: var(--muted); }
+.rxlabel header strong { display: block; font-size: 26px; line-height: 1.15; }
+.rxlabel .body { padding: 14px 18px 18px; }
+.rxlabel dl { margin: 0; display: grid; grid-template-columns: 7.5em 1fr; gap: 8px 12px; }
+.rxlabel dt { color: var(--muted); font-size: 14px; font-weight: 700; padding-top: 2px; }
+.rxlabel dd { margin: 0; word-break: break-word; }
+.rxlabel ul { margin: 0; padding-left: 18px; }
+.rxlabel.send { border-color: var(--send); } .rxlabel.send header { background: var(--send-soft); border-color: var(--send); color: var(--send-ink); }
+.rxlabel.review { border-color: var(--review); } .rxlabel.review header { background: var(--review-soft); border-color: var(--review); color: var(--review-ink); }
+.rxlabel.exclude { border-color: var(--exclude); } .rxlabel.exclude header { background: var(--exclude-soft); border-color: var(--exclude); color: var(--exclude-ink); }
+
+/* Install */
+.readiness { list-style: none; padding: 0; margin: 0 0 20px; }
+.readiness li { padding: 8px 12px 8px 14px; border-left: 4px solid var(--line-strong); margin-bottom: 6px; background: var(--panel); font-size: 15px; }
+.readiness li.error { border-color: var(--exclude); }
+.readiness li.warn { border-color: var(--review); }
+.readiness li.info { border-color: var(--line-strong); color: var(--muted); }
+.readiness li.ok { border-color: var(--send); }
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0; }
+.codebox { width: 100%; height: 340px; background: var(--code-bg); color: var(--code-ink); border: 0; border-radius: var(--radius); padding: 14px; font-family: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; line-height: 1.5; white-space: pre; overflow: auto; }
+.instructions h3 { font-size: 21px; margin: 30px 0 10px; }
+.instructions h3:first-child { margin-top: 0; }
+.instructions ol, .instructions ul { padding-left: 24px; max-width: 70ch; }
+.instructions li { margin-bottom: 10px; }
+.instructions .todo-item { color: var(--review-ink); font-weight: 700; }
+.instructions .ok-item { color: var(--send-ink); font-weight: 700; }
+.tbl-wrap { overflow-x: auto; margin-bottom: 16px; }
+.tbl { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 15px; }
+.tbl th, .tbl td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.tbl th { font-size: 14px; color: var(--muted); }
+.st-ok { color: var(--send-ink); font-weight: 700; }
+.st-old { color: var(--review-ink); font-weight: 700; }
+.st-none { color: var(--muted); }
+details.box { border: 1.5px solid var(--line); border-radius: var(--radius); padding: 12px 16px; background: var(--panel); margin-bottom: 14px; }
+details.box summary { font-weight: 700; cursor: pointer; }
+details.box[open] summary { margin-bottom: 12px; }
+
+/* Banners and toast */
+.banner { padding: 12px 16px; border-radius: var(--radius); margin-bottom: 18px; border: 1.5px solid var(--review); background: var(--review-soft); color: var(--review-ink); display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+.banner.info { border-color: var(--line-strong); background: var(--panel); color: var(--ink); }
+.banner p { margin: 0; flex: 1 1 320px; }
+.toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); transform: translateX(-50%); z-index: 20;
+  background: var(--ink); color: var(--panel); padding: 11px 18px; border-radius: var(--radius); font-weight: 700; font-size: 15px;
+  display: none; gap: 14px; align-items: center; max-width: calc(100% - 32px); }
+.toast.show { display: flex; }
+.toast button { background: none; border: 0; color: inherit; text-decoration: underline; font-weight: 700; cursor: pointer; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+.modal { position: fixed; inset: 0; z-index: 30; background: rgba(8, 18, 20, .5); display: flex; align-items: flex-start; justify-content: center;
+  padding: calc(env(safe-area-inset-top, 0px) + 48px) 16px calc(env(safe-area-inset-bottom, 0px) + 16px); overflow: auto; }
+.modal-card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; width: 100%; max-width: 620px; padding: 24px; }
+.modal-card h2 { font-size: 24px; margin-bottom: 14px; }
+.changes { max-height: 230px; overflow: auto; margin: 0 0 8px; padding: 10px 14px 10px 30px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); font-size: 14px; }
+.changes li { margin-bottom: 4px; }
+.invalid { border-color: var(--exclude) !important; }
+details.inline summary { cursor: pointer; color: var(--send-ink); font-weight: 700; font-size: 14px; }
+details.inline ul { margin: 6px 0 0; padding-left: 18px; font-size: 14px; }
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; gap: 18px; padding-top: 0; }
+  .steps { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 0px); z-index: 4; background: var(--bg); margin: 0 -24px; padding: 6px 12px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+  .steps ol { display: flex; gap: 2px; }
+  .steps a { white-space: nowrap; border-left: 0; border-bottom: 3px solid transparent; padding: 8px 10px; font-size: 15px; }
+  .steps a[aria-current="page"] { border-bottom-color: var(--send); background: transparent; }
+  .tester { grid-template-columns: 1fr; }
+  .rxlabel { position: static; }
+  .top { position: static; }
+}
+@media (max-width: 620px) {
+  body { font-size: 16px; }
+  .row { grid-template-columns: 1fr; }
+  section h2 { font-size: 26px; }
+  .route { grid-template-columns: 1fr; }
+  .lane { flex-direction: column; gap: 0; }
+  .labels li { grid-template-columns: 1fr; gap: 2px; }
+  .book thead { display: none; }
+  .book tr { display: block; border-top: 1px solid var(--line); padding: 8px 0; }
+  .book td { display: block; border: 0; padding: 4px 0; width: auto !important; }
+  .store { grid-template-columns: 1fr; }
+  .store-num { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 34 34" aria-hidden="true">
+        <rect x="1" y="1" width="32" height="32" rx="6" fill="var(--send)"/>
+        <path d="M9 11h16M9 17h10M9 23h7" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M21 20l4 3-4 3" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div>
+        <h1>Invoice forwarder setup</h1>
+        <p>Settings for the Gmail script that sends invoices to each store’s fax and Teams</p>
+      </div>
+    </div>
+    <div class="status" id="status" aria-live="polite"><span>Loading saved settings…</span></div>
+    <button class="btn primary" data-act="save" id="saveBtn">Save settings</button>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="steps" aria-label="Setup steps">
+    <ol>
+      <li><a href="#stores" data-nav="stores">Stores</a></li>
+      <li><a href="#delivery" data-nav="delivery">Where invoices go</a></li>
+      <li><a href="#detection" data-nav="detection">What counts as an invoice</a></li>
+      <li><a href="#senders" data-nav="senders">Sender address book</a></li>
+      <li><a href="#labels" data-nav="labels">Labels and schedule</a></li>
+      <li><a href="#test" data-nav="test">Try an email</a></li>
+      <li><a href="#install" data-nav="install">Get the script <span class="badge" id="navBadge" hidden></span></a></li>
+    </ol>
+  </nav>
+
+  <main id="main">
+    <div id="saveHelp"></div>
+    <div id="banners"></div>
+    <section data-view="stores" id="v-stores"></section>
+    <section data-view="delivery" id="v-delivery"></section>
+    <section data-view="detection" id="v-detection"></section>
+    <section data-view="senders" id="v-senders"></section>
+    <section data-view="labels" id="v-labels"></section>
+    <section data-view="test" id="v-test"></section>
+    <section data-view="install" id="v-install"></section>
+  </main>
+</div>
+
+ <div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-card"><h2 id="modalTitle"></h2><div id="modalBody"></div>
+    <div class="toolbar"><button class="btn primary" id="modalOk"></button><button class="btn" id="modalCancel">Cancel</button></div></div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastText"></span><button id="toastAction" hidden></button></div>
+
+<script>
+/* ============================================================
+ * CORE LOGIC - decides what happens to an email.
+ * The setup page uses this same code for its "Try an email" tester.
+ * ============================================================ */
+var IFCore = (function () {
+  var IMAGE_EXT = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'tif', 'tiff', 'webp'];
+
+  // Purchase-order number variations: PO#, P.O. No., PO Number, PO Num, Purchase Order, PO 123456
+  var PO_PATTERNS = [
+    { label: 'PO number', re: /(?:^|[^A-Za-z0-9])p\.?\s?o\.?\s*(?:#|no\.?(?![a-z])|num(?:ber)?\.?(?![a-z])|nbr\.?(?![a-z]))/i },
+    { label: 'purchase order', re: /(?:^|[^A-Za-z0-9])purchase\s+order/i },
+    { label: 'PO number', re: /(?:^|[^A-Za-z0-9])P\.?O\.?\s*[:#-]?\s*\d{4,}/ }
+  ];
+
+  function list_(v) {
+    if (!v) return [];
+    var arr = Array.isArray(v) ? v : String(v).split(/[\n,;]+/);
+    return arr.map(function (s) { return String(s).trim(); }).filter(function (s) { return s.length > 0; });
+  }
+
+  function escRe_(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+  // Matches a phrase at the start of a word. Short phrases (3 letters or fewer) must be a whole word.
+  function phraseRe_(phrase, wholeWord) {
+    var p = String(phrase).trim();
+    var body = escRe_(p).replace(/\s+/g, '\\s+');
+    var whole = wholeWord || p.length <= 3;
+    return new RegExp('(?:^|[^A-Za-z0-9])' + body + (whole ? '(?![A-Za-z0-9])' : ''), 'i');
+  }
+
+  function invoiceHits_(cfg, text) {
+    var hits = [];
+    if (!text) return hits;
+    list_(cfg.keywords).forEach(function (k) {
+      if (phraseRe_(k, false).test(text)) hits.push(k);
+    });
+    if (cfg.matchPoPatterns) {
+      PO_PATTERNS.forEach(function (p) {
+        if (hits.indexOf(p.label) < 0 && p.re.test(text)) hits.push(p.label);
+      });
+    }
+    return hits;
+  }
+
+  function attachmentNames_(info) {
+    return (info.attachments || []).map(function (a) { return a.name || ''; });
+  }
+
+  function keywordMatches_(cfg, info) {
+    var names = attachmentNames_(info).join('\n').replace(/[_\-.]+/g, ' ');
+    return {
+      subject: invoiceHits_(cfg, info.subject || ''),
+      attachment: invoiceHits_(cfg, names),
+      body: invoiceHits_(cfg, info.body || ''),
+      pdf: cfg.readPdfText && cfg.pdfWording ? invoiceHits_(cfg, info.pdfText || '') : []
+    };
+  }
+
+  function exclusionMatch_(cfg, info) {
+    var text = (info.subject || '') + (cfg.exclusionCheckBody ? '\n' + (info.body || '') : '');
+    var phrases = list_(cfg.exclusionPhrases);
+    for (var i = 0; i < phrases.length; i++) {
+      if (phraseRe_(phrases[i], false).test(text)) return phrases[i];
+    }
+    return null;
+  }
+
+  function parseSender_(from) {
+    var raw = String(from || '');
+    var m = raw.match(/<([^>]+)>/);
+    var email = (m ? m[1] : raw).trim().toLowerCase();
+    var at = email.lastIndexOf('@');
+    return { email: email, domain: at >= 0 ? email.slice(at + 1) : '' };
+  }
+
+  function validSender_(pattern) {
+    var p = String(pattern || '').trim().toLowerCase().replace(/^@/, '');
+    if (!p) return false;
+    if (p.indexOf('@') >= 0) return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(p);
+    return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(p);
+  }
+
+  function senderMatches_(pattern, email, domain) {
+    var p = String(pattern || '').trim().toLowerCase().replace(/^@/, '');
+    if (!p) return false;
+    if (p.indexOf('@') >= 0) return p === email;
+    return domain === p || (domain.length > p.length && domain.slice(-(p.length + 1)) === '.' + p);
+  }
+
+  // Exact email entries win over domain entries; longer domains win over shorter ones.
+  function findBookEntry_(cfg, email, domain) {
+    var book = (cfg.addressBook || []).filter(function (e) { return e && e.sender; });
+    var exact = book.filter(function (e) { return String(e.sender).indexOf('@') > 0 && senderMatches_(e.sender, email, domain); });
+    if (exact.length) return exact[0];
+    var doms = book.filter(function (e) { return String(e.sender).replace(/^@/, '').indexOf('@') < 0 && senderMatches_(e.sender, email, domain); });
+    doms.sort(function (a, b) { return String(b.sender).length - String(a.sender).length; });
+    return doms[0] || null;
+  }
+
+  function storeById_(cfg, id) {
+    var s = (cfg.stores || []).filter(function (x) { return x.id === id; });
+    return s[0] || null;
+  }
+
+  function storeName_(cfg, id) {
+    var s = storeById_(cfg, id);
+    return s ? (s.name || s.id) : id;
+  }
+
+  // Store keywords in the subject, message text or attachment names win over ones found only inside a PDF.
+  function storeHits_(cfg, info) {
+    var text = [info.subject || '', info.body || '', attachmentNames_(info).join(' ').replace(/[_\-.]+/g, ' ')].join('\n');
+    var pdf = cfg.readPdfText ? String(info.pdfText || '') : '';
+    var inText = [], inPdf = [];
+    (cfg.stores || []).forEach(function (s) {
+      var kws = list_(s.keywords);
+      var textHit = null, pdfHit = null;
+      for (var i = 0; i < kws.length; i++) {
+        var re = phraseRe_(kws[i], true);
+        if (!textHit && re.test(text)) textHit = kws[i];
+        if (!pdfHit && pdf && re.test(pdf)) pdfHit = kws[i];
+      }
+      if (textHit) inText.push({ store: s, keyword: textHit, inPdf: false });
+      else if (pdfHit) inPdf.push({ store: s, keyword: pdfHit, inPdf: true });
+    });
+    return inText.length ? inText : inPdf;
+  }
+
+  function route_(cfg, info, book, env) {
+    env = env || {};
+    if (book && book.store && book.store !== 'auto' && storeById_(cfg, book.store)) {
+      return { kind: 'book', storeIds: [book.store], reason: 'The address book sends this sender to ' + storeName_(cfg, book.store) };
+    }
+    var hits = storeHits_(cfg, info);
+    if (hits.length === 1) {
+      return { kind: 'keyword', storeIds: [hits[0].store.id], reason: 'It mentions \u201c' + hits[0].keyword + '\u201d, a keyword for ' + (hits[0].store.name || hits[0].store.id) + (hits[0].inPdf ? ' (found inside the PDF)' : '') };
+    }
+    if (hits.length > 1) {
+      var names = hits.map(function (h) { return h.store.name || h.store.id; }).join(', ');
+      var ids = hits.map(function (h) { return h.store.id; });
+      if (cfg.multiStoreMatch === 'all') return { kind: 'keyword', storeIds: ids, reason: 'It mentions several stores (' + names + '), so it goes to each' };
+      return { kind: 'multi', storeIds: ids, problem: 'It mentions more than one store (' + names + ')' };
+    }
+    if (env.homeStoreId && storeById_(cfg, env.homeStoreId)) {
+      return { kind: 'home', storeIds: [env.homeStoreId], reason: 'No store keyword found, so it goes to the store whose Gmail received it (' + storeName_(cfg, env.homeStoreId) + ')' };
+    }
+    if (cfg.fallbackStoreId && storeById_(cfg, cfg.fallbackStoreId)) {
+      return { kind: 'fallback', storeIds: [cfg.fallbackStoreId], reason: 'No store keyword found, so it goes to the fallback store (' + storeName_(cfg, cfg.fallbackStoreId) + ')' };
+    }
+    return { kind: 'none', storeIds: [], problem: 'It isn\u2019t clear which store this is for' };
+  }
+
+  function ext_(name) {
+    var m = /\.([A-Za-z0-9]+)$/.exec(name || '');
+    return m ? m[1].toLowerCase() : '';
+  }
+
+  function forwardableFiles_(cfg, atts) {
+    var types = list_(cfg.attachmentTypes).map(function (t) { return t.replace(/^\./, '').toLowerCase(); });
+    var minImg = (Number(cfg.minImageKB) || 0) * 1024;
+    return (atts || []).filter(function (a) {
+      var e = ext_(a.name);
+      if (types.indexOf(e) < 0) return false;
+      if (IMAGE_EXT.indexOf(e) >= 0 && a.size != null && a.size < minImg) return false;
+      return true;
+    });
+  }
+
+  function faxConfigured_(cfg) {
+    var t = String(cfg.faxAddressTemplate || '');
+    return t.indexOf('{number}') >= 0 && t.indexOf('@') > 0 && !/replace|your-fax|example\./i.test(t);
+  }
+
+  function faxDigits_(number) {
+    var d = String(number || '').replace(/\D/g, '');
+    if (d.length === 11 && d.charAt(0) === '1') d = d.slice(1);
+    return d;
+  }
+
+  function faxAddress_(cfg, number) {
+    var d = faxDigits_(number);
+    return d ? String(cfg.faxAddressTemplate || '').replace('{number}', d) : '';
+  }
+
+  function faxDomain_(cfg) {
+    if (!faxConfigured_(cfg)) return '';
+    var t = String(cfg.faxAddressTemplate);
+    return t.slice(t.lastIndexOf('@') + 1).toLowerCase();
+  }
+
+  // opts.includePending = also list fax addresses that can't be used yet (for display only)
+  function destinationsFor_(cfg, store, opts) {
+    var out = [];
+    if (!store) return out;
+    var mode = cfg.deliveryMode || 'both';
+    if (mode !== 'teams' && faxDigits_(store.faxNumber)) {
+      if (faxConfigured_(cfg)) out.push({ kind: 'fax', address: faxAddress_(cfg, store.faxNumber) });
+      else if (opts && opts.includePending) out.push({ kind: 'fax-pending', address: faxAddress_(cfg, store.faxNumber) });
+    }
+    if (mode !== 'fax') {
+      var t = String(store.teamsAddress || '').trim() || String(cfg.defaultTeamsAddress || '').trim();
+      if (t) out.push({ kind: 'teams', address: t });
+    }
+    return out;
+  }
+
+  // Works out stores, files and destinations. forcedStoreId is used when staff pick a store by label.
+  function plan_(cfg, info, env, forcedStoreId) {
+    var s = parseSender_(info.from);
+    var book = findBookEntry_(cfg, s.email, s.domain);
+    var r = forcedStoreId ? { kind: 'staff', storeIds: [forcedStoreId], reason: 'Staff chose ' + storeName_(cfg, forcedStoreId) } : route_(cfg, info, book, env);
+    var files = forwardableFiles_(cfg, info.attachments);
+    var plan = {
+      storeIds: r.storeIds,
+      routeKind: r.kind || '',
+      routeReason: r.reason || '',
+      problem: r.problem || '',
+      files: files,
+      bodyAsPdf: !!cfg.bodyToPdf && (files.length === 0 || !!cfg.alwaysIncludeBody)
+    };
+    if (!plan.problem) {
+      var noDest = plan.storeIds.filter(function (id) { return destinationsFor_(cfg, storeById_(cfg, id)).length === 0; });
+      if (noDest.length) {
+        plan.problem = 'There\u2019s no working fax or Teams address for ' + noDest.map(function (id) { return storeName_(cfg, id); }).join(', ') +
+          (faxConfigured_(cfg) ? '' : ' yet (the fax provider address is still a placeholder)');
+      }
+    }
+    if (!plan.problem && files.length === 0 && !plan.bodyAsPdf) {
+      plan.problem = 'There\u2019s nothing to send: no attachment, and \u201cturn the message text into a PDF\u201d is off';
+    }
+    return plan;
+  }
+
+  function where_(kw) {
+    var parts = [];
+    if (kw.subject.length) parts.push('the subject (' + kw.subject.join(', ') + ')');
+    if (kw.attachment.length) parts.push('an attachment name (' + kw.attachment.join(', ') + ')');
+    if (kw.body.length) parts.push('the message text (' + kw.body.join(', ') + ')');
+    if (kw.pdf && kw.pdf.length) parts.push('the text inside a PDF (' + kw.pdf.join(', ') + ')');
+    if (parts.length <= 1) return parts.join('');
+    return parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1];
+  }
+
+  /**
+   * The main decision. Returns:
+   *   action: 'send' | 'review' | 'exclude' | 'ignore'
+   *   reasons: plain-language list of why
+   *   storeIds, files, bodyAsPdf: what would be sent where
+   * env: { trusted: [emails], blocked: [emails], homeStoreId: 's1', inSpam: bool }
+   */
+  function decide_(cfg, info, env) {
+    env = env || {};
+    var s = parseSender_(info.from);
+    var kw = keywordMatches_(cfg, info);
+    var any = kw.subject.length + kw.attachment.length + kw.body.length + kw.pdf.length > 0;
+    var book = findBookEntry_(cfg, s.email, s.domain);
+    var vendor = book && book.vendor ? ' (' + book.vendor + ')' : '';
+    var blocked = (env.blocked || []).indexOf(s.email) >= 0;
+    var trusted = (env.trusted || []).indexOf(s.email) >= 0;
+    var res = { action: 'ignore', reasons: [], keywordHits: kw, sender: s.email, bookEntry: book, storeIds: [], files: [], bodyAsPdf: false, routeReason: '', routeKind: '', locked: false };
+
+    if (blocked || (book && book.action === 'exclude')) {
+      res.action = any ? 'exclude' : 'ignore';
+      res.locked = true;
+      res.reasons.push(blocked ? 'Staff blocked this sender with the Block Sender label' : 'This sender is set to \u201cnever forward\u201d in the address book' + vendor);
+      return res;
+    }
+
+    if (book && book.action === 'forward') {
+      res.action = 'send';
+      res.reasons.push('This sender is in the address book' + vendor + ' as \u201calways forward\u201d');
+    } else if (trusted) {
+      res.action = 'send';
+      res.reasons.push('Staff trusted this sender with the Trust Sender label');
+    } else if (book && book.action === 'review') {
+      res.action = 'review';
+      res.reasons.push('The address book says to always check this sender' + vendor);
+    } else {
+      var ex = exclusionMatch_(cfg, info);
+      if (ex) {
+        res.action = any ? 'exclude' : 'ignore';
+        res.locked = true;
+        res.reasons.push('It contains the exclusion phrase \u201c' + ex + '\u201d');
+        return res;
+      }
+      var rules = cfg.rules || {};
+      if (any) {
+        var auto = (kw.subject.length && rules.subject === 'send') ||
+                   (kw.attachment.length && rules.attachment === 'send') ||
+                   (kw.body.length && rules.body === 'send') ||
+                   (kw.pdf.length && rules.pdf === 'send');
+        res.action = auto ? 'send' : 'review';
+        res.reasons.push('Invoice wording found in ' + where_(kw));
+        if (!auto) res.reasons.push('Wording found only there is set to be held for review');
+      } else if (cfg.reviewUnknownAttachments && !book && forwardableFiles_(cfg, info.attachments).length) {
+        res.action = 'review';
+        res.reasons.push('It has an attachment from a sender who isn\u2019t in the address book');
+      } else {
+        return res;
+      }
+    }
+
+    var plan = plan_(cfg, info, env, null);
+    res.storeIds = plan.storeIds;
+    res.routeReason = plan.routeReason;
+    res.routeKind = plan.routeKind;
+    res.files = plan.files;
+    res.bodyAsPdf = plan.bodyAsPdf;
+    if (plan.problem) {
+      if (res.action === 'send') res.action = 'review';
+      res.reasons.push(plan.problem);
+    }
+    if (env.inSpam && res.action === 'send') {
+      res.action = 'review';
+      res.reasons.push('It was in the Spam folder');
+    }
+    return res;
+  }
+
+  function hasPdf_(info) {
+    return (info.attachments || []).some(function (a) { return ext_(a.name) === 'pdf'; });
+  }
+
+  // True when reading the text inside the PDF could change the decision:
+  // to find the store when nothing else named it, or to find invoice wording.
+  function needsPdfText_(cfg, info, d) {
+    if (!cfg.readPdfText || info.pdfText != null || !hasPdf_(info) || d.locked) return false;
+    if (d.action === 'ignore') return !!cfg.pdfWording;
+    if (d.action === 'exclude') return false;
+    return ['home', 'fallback', 'none', 'multi'].indexOf(d.routeKind) >= 0;
+  }
+
+  function configWarnings_(cfg) {
+    var w = [];
+    var stores = cfg.stores || [];
+    var mode = cfg.deliveryMode || 'both';
+    if (mode !== 'teams' && !faxConfigured_(cfg)) {
+      w.push({ level: 'warn', text: 'The fax provider email format is still a placeholder, so nothing will be faxed yet.' +
+        (mode === 'both' ? ' Invoices will still go to Teams.' : ' Invoices will be held for review instead.') });
+    }
+    if (!stores.length) w.push({ level: 'error', text: 'Add at least one store.' });
+    var seen = {};
+    var noKeywords = 0, noGmail = 0;
+    stores.forEach(function (st, i) {
+      var n = st.name || ('Store ' + (i + 1));
+      var issues = [], level = 'warn';
+      var g = String(st.gmail || '').trim().toLowerCase();
+      if (!g) { issues.push('no Gmail address'); noGmail++; }
+      else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(g)) { issues.push('\u201c' + st.gmail + '\u201d isn\u2019t a valid email address'); level = 'error'; }
+      else if (seen[g]) { issues.push('same Gmail address as ' + seen[g]); level = 'error'; }
+      else seen[g] = n;
+      var d = faxDigits_(st.faxNumber);
+      if (mode !== 'teams') {
+        if (!d) issues.push('no fax number');
+        else if (d.length !== 10) issues.push('fax number has ' + d.length + ' digits instead of 10');
+      }
+      if (mode !== 'fax' && !String(st.teamsAddress || cfg.defaultTeamsAddress || '').trim()) issues.push('no Teams channel address (and no default channel)');
+      if (stores.length > 1 && !list_(st.keywords).length) noKeywords++;
+      if (issues.length) w.push({ level: level, text: n + ': ' + issues.join(', ') + '.' });
+    });
+    if (noGmail) w.push({ level: 'info', text: 'Without a Gmail address, the script can\u2019t tell it\u2019s running in that store\u2019s account, so invoices without a store keyword are held for review there.' });
+    if (noKeywords) w.push({ level: 'info', text: noKeywords + ' store' + (noKeywords > 1 ? 's have' : ' has') + ' no store keywords. That\u2019s fine if invoices always arrive in the right store\u2019s Gmail; keywords help when they don\u2019t.' });
+    if (!list_(cfg.reviewRecipients).length) {
+      w.push({ level: 'info', text: 'No one is set to get review notices, so each store\u2019s Gmail will email itself.' });
+    }
+    if (!list_(cfg.keywords).length && !cfg.matchPoPatterns && !(cfg.addressBook || []).length) {
+      w.push({ level: 'error', text: 'There are no keywords and no address book senders, so nothing will be detected.' });
+    }
+    var hist = String(cfg.historyDocUrl || '').trim();
+    if (!hist) w.push({ level: 'info', text: 'No change history document is linked, so installs aren\u2019t recorded in Google Sheets or Docs. The history of saved settings is still kept on this page.' });
+    else if (!/docs\.google\.com\/(spreadsheets|document)\/d\//.test(hist)) w.push({ level: 'error', text: 'The change history link isn\u2019t a Google Sheet or Google Doc link.' });
+    (cfg.addressBook || []).forEach(function (e, i) {
+      if (!validSender_(e.sender)) w.push({ level: 'error', text: 'Address book row ' + (i + 1) + ': \u201c' + (e.sender || '') + '\u201d isn\u2019t an email address or domain.' });
+    });
+    return w;
+  }
+
+  return {
+    list_: list_, parseSender_: parseSender_, validSender_: validSender_, keywordMatches_: keywordMatches_,
+    findBookEntry_: findBookEntry_, storeById_: storeById_, storeName_: storeName_, route_: route_, plan_: plan_,
+    decide_: decide_, needsPdfText_: needsPdfText_, hasPdf_: hasPdf_, forwardableFiles_: forwardableFiles_, faxConfigured_: faxConfigured_, faxAddress_: faxAddress_,
+    faxDomain_: faxDomain_, faxDigits_: faxDigits_, destinationsFor_: destinationsFor_, configWarnings_: configWarnings_
+  };
+})();
+
+</script>
+<script>
+var CORE_SRC = "/* ============================================================\n * CORE LOGIC - decides what happens to an email.\n * The setup page uses this same code for its \"Try an email\" tester.\n * ============================================================ */\nvar IFCore = (function () {\n  var IMAGE_EXT = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'tif', 'tiff', 'webp'];\n\n  // Purchase-order number variations: PO#, P.O. No., PO Number, PO Num, Purchase Order, PO 123456\n  var PO_PATTERNS = [\n    { label: 'PO number', re: /(?:^|[^A-Za-z0-9])p\\.?\\s?o\\.?\\s*(?:#|no\\.?(?![a-z])|num(?:ber)?\\.?(?![a-z])|nbr\\.?(?![a-z]))/i },\n    { label: 'purchase order', re: /(?:^|[^A-Za-z0-9])purchase\\s+order/i },\n    { label: 'PO number', re: /(?:^|[^A-Za-z0-9])P\\.?O\\.?\\s*[:#-]?\\s*\\d{4,}/ }\n  ];\n\n  function list_(v) {\n    if (!v) return [];\n    var arr = Array.isArray(v) ? v : String(v).split(/[\\n,;]+/);\n    return arr.map(function (s) { return String(s).trim(); }).filter(function (s) { return s.length > 0; });\n  }\n\n  function escRe_(s) { return String(s).replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&'); }\n\n  // Matches a phrase at the start of a word. Short phrases (3 letters or fewer) must be a whole word.\n  function phraseRe_(phrase, wholeWord) {\n    var p = String(phrase).trim();\n    var body = escRe_(p).replace(/\\s+/g, '\\\\s+');\n    var whole = wholeWord || p.length <= 3;\n    return new RegExp('(?:^|[^A-Za-z0-9])' + body + (whole ? '(?![A-Za-z0-9])' : ''), 'i');\n  }\n\n  function invoiceHits_(cfg, text) {\n    var hits = [];\n    if (!text) return hits;\n    list_(cfg.keywords).forEach(function (k) {\n      if (phraseRe_(k, false).test(text)) hits.push(k);\n    });\n    if (cfg.matchPoPatterns) {\n      PO_PATTERNS.forEach(function (p) {\n        if (hits.indexOf(p.label) < 0 && p.re.test(text)) hits.push(p.label);\n      });\n    }\n    return hits;\n  }\n\n  function attachmentNames_(info) {\n    return (info.attachments || []).map(function (a) { return a.name || ''; });\n  }\n\n  function keywordMatches_(cfg, info) {\n    var names = attachmentNames_(info).join('\\n').replace(/[_\\-.]+/g, ' ');\n    return {\n      subject: invoiceHits_(cfg, info.subject || ''),\n      attachment: invoiceHits_(cfg, names),\n      body: invoiceHits_(cfg, info.body || ''),\n      pdf: cfg.readPdfText && cfg.pdfWording ? invoiceHits_(cfg, info.pdfText || '') : []\n    };\n  }\n\n  function exclusionMatch_(cfg, info) {\n    var text = (info.subject || '') + (cfg.exclusionCheckBody ? '\\n' + (info.body || '') : '');\n    var phrases = list_(cfg.exclusionPhrases);\n    for (var i = 0; i < phrases.length; i++) {\n      if (phraseRe_(phrases[i], false).test(text)) return phrases[i];\n    }\n    return null;\n  }\n\n  function parseSender_(from) {\n    var raw = String(from || '');\n    var m = raw.match(/<([^>]+)>/);\n    var email = (m ? m[1] : raw).trim().toLowerCase();\n    var at = email.lastIndexOf('@');\n    return { email: email, domain: at >= 0 ? email.slice(at + 1) : '' };\n  }\n\n  function validSender_(pattern) {\n    var p = String(pattern || '').trim().toLowerCase().replace(/^@/, '');\n    if (!p) return false;\n    if (p.indexOf('@') >= 0) return /^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(p);\n    return /^[a-z0-9-]+(\\.[a-z0-9-]+)+$/.test(p);\n  }\n\n  function senderMatches_(pattern, email, domain) {\n    var p = String(pattern || '').trim().toLowerCase().replace(/^@/, '');\n    if (!p) return false;\n    if (p.indexOf('@') >= 0) return p === email;\n    return domain === p || (domain.length > p.length && domain.slice(-(p.length + 1)) === '.' + p);\n  }\n\n  // Exact email entries win over domain entries; longer domains win over shorter ones.\n  function findBookEntry_(cfg, email, domain) {\n    var book = (cfg.addressBook || []).filter(function (e) { return e && e.sender; });\n    var exact = book.filter(function (e) { return String(e.sender).indexOf('@') > 0 && senderMatches_(e.sender, email, domain); });\n    if (exact.length) return exact[0];\n    var doms = book.filter(function (e) { return String(e.sender).replace(/^@/, '').indexOf('@') < 0 && senderMatches_(e.sender, email, domain); });\n    doms.sort(function (a, b) { return String(b.sender).length - String(a.sender).length; });\n    return doms[0] || null;\n  }\n\n  function storeById_(cfg, id) {\n    var s = (cfg.stores || []).filter(function (x) { return x.id === id; });\n    return s[0] || null;\n  }\n\n  function storeName_(cfg, id) {\n    var s = storeById_(cfg, id);\n    return s ? (s.name || s.id) : id;\n  }\n\n  // Store keywords in the subject, message text or attachment names win over ones found only inside a PDF.\n  function storeHits_(cfg, info) {\n    var text = [info.subject || '', info.body || '', attachmentNames_(info).join(' ').replace(/[_\\-.]+/g, ' ')].join('\\n');\n    var pdf = cfg.readPdfText ? String(info.pdfText || '') : '';\n    var inText = [], inPdf = [];\n    (cfg.stores || []).forEach(function (s) {\n      var kws = list_(s.keywords);\n      var textHit = null, pdfHit = null;\n      for (var i = 0; i < kws.length; i++) {\n        var re = phraseRe_(kws[i], true);\n        if (!textHit && re.test(text)) textHit = kws[i];\n        if (!pdfHit && pdf && re.test(pdf)) pdfHit = kws[i];\n      }\n      if (textHit) inText.push({ store: s, keyword: textHit, inPdf: false });\n      else if (pdfHit) inPdf.push({ store: s, keyword: pdfHit, inPdf: true });\n    });\n    return inText.length ? inText : inPdf;\n  }\n\n  function route_(cfg, info, book, env) {\n    env = env || {};\n    if (book && book.store && book.store !== 'auto' && storeById_(cfg, book.store)) {\n      return { kind: 'book', storeIds: [book.store], reason: 'The address book sends this sender to ' + storeName_(cfg, book.store) };\n    }\n    var hits = storeHits_(cfg, info);\n    if (hits.length === 1) {\n      return { kind: 'keyword', storeIds: [hits[0].store.id], reason: 'It mentions \\u201c' + hits[0].keyword + '\\u201d, a keyword for ' + (hits[0].store.name || hits[0].store.id) + (hits[0].inPdf ? ' (found inside the PDF)' : '') };\n    }\n    if (hits.length > 1) {\n      var names = hits.map(function (h) { return h.store.name || h.store.id; }).join(', ');\n      var ids = hits.map(function (h) { return h.store.id; });\n      if (cfg.multiStoreMatch === 'all') return { kind: 'keyword', storeIds: ids, reason: 'It mentions several stores (' + names + '), so it goes to each' };\n      return { kind: 'multi', storeIds: ids, problem: 'It mentions more than one store (' + names + ')' };\n    }\n    if (env.homeStoreId && storeById_(cfg, env.homeStoreId)) {\n      return { kind: 'home', storeIds: [env.homeStoreId], reason: 'No store keyword found, so it goes to the store whose Gmail received it (' + storeName_(cfg, env.homeStoreId) + ')' };\n    }\n    if (cfg.fallbackStoreId && storeById_(cfg, cfg.fallbackStoreId)) {\n      return { kind: 'fallback', storeIds: [cfg.fallbackStoreId], reason: 'No store keyword found, so it goes to the fallback store (' + storeName_(cfg, cfg.fallbackStoreId) + ')' };\n    }\n    return { kind: 'none', storeIds: [], problem: 'It isn\\u2019t clear which store this is for' };\n  }\n\n  function ext_(name) {\n    var m = /\\.([A-Za-z0-9]+)$/.exec(name || '');\n    return m ? m[1].toLowerCase() : '';\n  }\n\n  function forwardableFiles_(cfg, atts) {\n    var types = list_(cfg.attachmentTypes).map(function (t) { return t.replace(/^\\./, '').toLowerCase(); });\n    var minImg = (Number(cfg.minImageKB) || 0) * 1024;\n    return (atts || []).filter(function (a) {\n      var e = ext_(a.name);\n      if (types.indexOf(e) < 0) return false;\n      if (IMAGE_EXT.indexOf(e) >= 0 && a.size != null && a.size < minImg) return false;\n      return true;\n    });\n  }\n\n  function faxConfigured_(cfg) {\n    var t = String(cfg.faxAddressTemplate || '');\n    return t.indexOf('{number}') >= 0 && t.indexOf('@') > 0 && !/replace|your-fax|example\\./i.test(t);\n  }\n\n  function faxDigits_(number) {\n    var d = String(number || '').replace(/\\D/g, '');\n    if (d.length === 11 && d.charAt(0) === '1') d = d.slice(1);\n    return d;\n  }\n\n  function faxAddress_(cfg, number) {\n    var d = faxDigits_(number);\n    return d ? String(cfg.faxAddressTemplate || '').replace('{number}', d) : '';\n  }\n\n  function faxDomain_(cfg) {\n    if (!faxConfigured_(cfg)) return '';\n    var t = String(cfg.faxAddressTemplate);\n    return t.slice(t.lastIndexOf('@') + 1).toLowerCase();\n  }\n\n  // opts.includePending = also list fax addresses that can't be used yet (for display only)\n  function destinationsFor_(cfg, store, opts) {\n    var out = [];\n    if (!store) return out;\n    var mode = cfg.deliveryMode || 'both';\n    if (mode !== 'teams' && faxDigits_(store.faxNumber)) {\n      if (faxConfigured_(cfg)) out.push({ kind: 'fax', address: faxAddress_(cfg, store.faxNumber) });\n      else if (opts && opts.includePending) out.push({ kind: 'fax-pending', address: faxAddress_(cfg, store.faxNumber) });\n    }\n    if (mode !== 'fax') {\n      var t = String(store.teamsAddress || '').trim() || String(cfg.defaultTeamsAddress || '').trim();\n      if (t) out.push({ kind: 'teams', address: t });\n    }\n    return out;\n  }\n\n  // Works out stores, files and destinations. forcedStoreId is used when staff pick a store by label.\n  function plan_(cfg, info, env, forcedStoreId) {\n    var s = parseSender_(info.from);\n    var book = findBookEntry_(cfg, s.email, s.domain);\n    var r = forcedStoreId ? { kind: 'staff', storeIds: [forcedStoreId], reason: 'Staff chose ' + storeName_(cfg, forcedStoreId) } : route_(cfg, info, book, env);\n    var files = forwardableFiles_(cfg, info.attachments);\n    var plan = {\n      storeIds: r.storeIds,\n      routeKind: r.kind || '',\n      routeReason: r.reason || '',\n      problem: r.problem || '',\n      files: files,\n      bodyAsPdf: !!cfg.bodyToPdf && (files.length === 0 || !!cfg.alwaysIncludeBody)\n    };\n    if (!plan.problem) {\n      var noDest = plan.storeIds.filter(function (id) { return destinationsFor_(cfg, storeById_(cfg, id)).length === 0; });\n      if (noDest.length) {\n        plan.problem = 'There\\u2019s no working fax or Teams address for ' + noDest.map(function (id) { return storeName_(cfg, id); }).join(', ') +\n          (faxConfigured_(cfg) ? '' : ' yet (the fax provider address is still a placeholder)');\n      }\n    }\n    if (!plan.problem && files.length === 0 && !plan.bodyAsPdf) {\n      plan.problem = 'There\\u2019s nothing to send: no attachment, and \\u201cturn the message text into a PDF\\u201d is off';\n    }\n    return plan;\n  }\n\n  function where_(kw) {\n    var parts = [];\n    if (kw.subject.length) parts.push('the subject (' + kw.subject.join(', ') + ')');\n    if (kw.attachment.length) parts.push('an attachment name (' + kw.attachment.join(', ') + ')');\n    if (kw.body.length) parts.push('the message text (' + kw.body.join(', ') + ')');\n    if (kw.pdf && kw.pdf.length) parts.push('the text inside a PDF (' + kw.pdf.join(', ') + ')');\n    if (parts.length <= 1) return parts.join('');\n    return parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1];\n  }\n\n  /**\n   * The main decision. Returns:\n   *   action: 'send' | 'review' | 'exclude' | 'ignore'\n   *   reasons: plain-language list of why\n   *   storeIds, files, bodyAsPdf: what would be sent where\n   * env: { trusted: [emails], blocked: [emails], homeStoreId: 's1', inSpam: bool }\n   */\n  function decide_(cfg, info, env) {\n    env = env || {};\n    var s = parseSender_(info.from);\n    var kw = keywordMatches_(cfg, info);\n    var any = kw.subject.length + kw.attachment.length + kw.body.length + kw.pdf.length > 0;\n    var book = findBookEntry_(cfg, s.email, s.domain);\n    var vendor = book && book.vendor ? ' (' + book.vendor + ')' : '';\n    var blocked = (env.blocked || []).indexOf(s.email) >= 0;\n    var trusted = (env.trusted || []).indexOf(s.email) >= 0;\n    var res = { action: 'ignore', reasons: [], keywordHits: kw, sender: s.email, bookEntry: book, storeIds: [], files: [], bodyAsPdf: false, routeReason: '', routeKind: '', locked: false };\n\n    if (blocked || (book && book.action === 'exclude')) {\n      res.action = any ? 'exclude' : 'ignore';\n      res.locked = true;\n      res.reasons.push(blocked ? 'Staff blocked this sender with the Block Sender label' : 'This sender is set to \\u201cnever forward\\u201d in the address book' + vendor);\n      return res;\n    }\n\n    if (book && book.action === 'forward') {\n      res.action = 'send';\n      res.reasons.push('This sender is in the address book' + vendor + ' as \\u201calways forward\\u201d');\n    } else if (trusted) {\n      res.action = 'send';\n      res.reasons.push('Staff trusted this sender with the Trust Sender label');\n    } else if (book && book.action === 'review') {\n      res.action = 'review';\n      res.reasons.push('The address book says to always check this sender' + vendor);\n    } else {\n      var ex = exclusionMatch_(cfg, info);\n      if (ex) {\n        res.action = any ? 'exclude' : 'ignore';\n        res.locked = true;\n        res.reasons.push('It contains the exclusion phrase \\u201c' + ex + '\\u201d');\n        return res;\n      }\n      var rules = cfg.rules || {};\n      if (any) {\n        var auto = (kw.subject.length && rules.subject === 'send') ||\n                   (kw.attachment.length && rules.attachment === 'send') ||\n                   (kw.body.length && rules.body === 'send') ||\n                   (kw.pdf.length && rules.pdf === 'send');\n        res.action = auto ? 'send' : 'review';\n        res.reasons.push('Invoice wording found in ' + where_(kw));\n        if (!auto) res.reasons.push('Wording found only there is set to be held for review');\n      } else if (cfg.reviewUnknownAttachments && !book && forwardableFiles_(cfg, info.attachments).length) {\n        res.action = 'review';\n        res.reasons.push('It has an attachment from a sender who isn\\u2019t in the address book');\n      } else {\n        return res;\n      }\n    }\n\n    var plan = plan_(cfg, info, env, null);\n    res.storeIds = plan.storeIds;\n    res.routeReason = plan.routeReason;\n    res.routeKind = plan.routeKind;\n    res.files = plan.files;\n    res.bodyAsPdf = plan.bodyAsPdf;\n    if (plan.problem) {\n      if (res.action === 'send') res.action = 'review';\n      res.reasons.push(plan.problem);\n    }\n    if (env.inSpam && res.action === 'send') {\n      res.action = 'review';\n      res.reasons.push('It was in the Spam folder');\n    }\n    return res;\n  }\n\n  function hasPdf_(info) {\n    return (info.attachments || []).some(function (a) { return ext_(a.name) === 'pdf'; });\n  }\n\n  // True when reading the text inside the PDF could change the decision:\n  // to find the store when nothing else named it, or to find invoice wording.\n  function needsPdfText_(cfg, info, d) {\n    if (!cfg.readPdfText || info.pdfText != null || !hasPdf_(info) || d.locked) return false;\n    if (d.action === 'ignore') return !!cfg.pdfWording;\n    if (d.action === 'exclude') return false;\n    return ['home', 'fallback', 'none', 'multi'].indexOf(d.routeKind) >= 0;\n  }\n\n  function configWarnings_(cfg) {\n    var w = [];\n    var stores = cfg.stores || [];\n    var mode = cfg.deliveryMode || 'both';\n    if (mode !== 'teams' && !faxConfigured_(cfg)) {\n      w.push({ level: 'warn', text: 'The fax provider email format is still a placeholder, so nothing will be faxed yet.' +\n        (mode === 'both' ? ' Invoices will still go to Teams.' : ' Invoices will be held for review instead.') });\n    }\n    if (!stores.length) w.push({ level: 'error', text: 'Add at least one store.' });\n    var seen = {};\n    var noKeywords = 0, noGmail = 0;\n    stores.forEach(function (st, i) {\n      var n = st.name || ('Store ' + (i + 1));\n      var issues = [], level = 'warn';\n      var g = String(st.gmail || '').trim().toLowerCase();\n      if (!g) { issues.push('no Gmail address'); noGmail++; }\n      else if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(g)) { issues.push('\\u201c' + st.gmail + '\\u201d isn\\u2019t a valid email address'); level = 'error'; }\n      else if (seen[g]) { issues.push('same Gmail address as ' + seen[g]); level = 'error'; }\n      else seen[g] = n;\n      var d = faxDigits_(st.faxNumber);\n      if (mode !== 'teams') {\n        if (!d) issues.push('no fax number');\n        else if (d.length !== 10) issues.push('fax number has ' + d.length + ' digits instead of 10');\n      }\n      if (mode !== 'fax' && !String(st.teamsAddress || cfg.defaultTeamsAddress || '').trim()) issues.push('no Teams channel address (and no default channel)');\n      if (stores.length > 1 && !list_(st.keywords).length) noKeywords++;\n      if (issues.length) w.push({ level: level, text: n + ': ' + issues.join(', ') + '.' });\n    });\n    if (noGmail) w.push({ level: 'info', text: 'Without a Gmail address, the script can\\u2019t tell it\\u2019s running in that store\\u2019s account, so invoices without a store keyword are held for review there.' });\n    if (noKeywords) w.push({ level: 'info', text: noKeywords + ' store' + (noKeywords > 1 ? 's have' : ' has') + ' no store keywords. That\\u2019s fine if invoices always arrive in the right store\\u2019s Gmail; keywords help when they don\\u2019t.' });\n    if (!list_(cfg.reviewRecipients).length) {\n      w.push({ level: 'info', text: 'No one is set to get review notices, so each store\\u2019s Gmail will email itself.' });\n    }\n    if (!list_(cfg.keywords).length && !cfg.matchPoPatterns && !(cfg.addressBook || []).length) {\n      w.push({ level: 'error', text: 'There are no keywords and no address book senders, so nothing will be detected.' });\n    }\n    var hist = String(cfg.historyDocUrl || '').trim();\n    if (!hist) w.push({ level: 'info', text: 'No change history document is linked, so installs aren\\u2019t recorded in Google Sheets or Docs. The history of saved settings is still kept on this page.' });\n    else if (!/docs\\.google\\.com\\/(spreadsheets|document)\\/d\\//.test(hist)) w.push({ level: 'error', text: 'The change history link isn\\u2019t a Google Sheet or Google Doc link.' });\n    (cfg.addressBook || []).forEach(function (e, i) {\n      if (!validSender_(e.sender)) w.push({ level: 'error', text: 'Address book row ' + (i + 1) + ': \\u201c' + (e.sender || '') + '\\u201d isn\\u2019t an email address or domain.' });\n    });\n    return w;\n  }\n\n  return {\n    list_: list_, parseSender_: parseSender_, validSender_: validSender_, keywordMatches_: keywordMatches_,\n    findBookEntry_: findBookEntry_, storeById_: storeById_, storeName_: storeName_, route_: route_, plan_: plan_,\n    decide_: decide_, needsPdfText_: needsPdfText_, hasPdf_: hasPdf_, forwardableFiles_: forwardableFiles_, faxConfigured_: faxConfigured_, faxAddress_: faxAddress_,\n    faxDomain_: faxDomain_, faxDigits_: faxDigits_, destinationsFor_: destinationsFor_, configWarnings_: configWarnings_\n  };\n})();\n";
+var GAS_SRC = "/* ============================================================\n * GMAIL PART - reads mail, sends faxes / Teams posts, applies labels.\n * ============================================================ */\nvar P_LAST = 'LAST_RUN_MS';\nvar P_HANDLED = 'HANDLED_IDS';\nvar P_TRUST = 'LEARNED_TRUSTED';\nvar P_BLOCK = 'LEARNED_BLOCKED';\nvar P_SHEET = 'LOG_SHEET_ID';\nvar P_FATAL = 'LAST_FATAL_NOTICE';\n\n/* ---------- Functions you can run from the editor ---------- */\n\n/** Run once after pasting a new version. Creates labels, the timer and the log sheet. Safe to run again. */\nfunction setup() {\n  var names = labelNames_();\n  [names.review, names.send, names.notInvoice, names.block, names.trust, names.sent, names.dismissed, names.excluded, names.error]\n    .forEach(function (n) { getOrCreateLabel_(n); });\n  (CONFIG.stores || []).forEach(function (s) { getOrCreateLabel_(storeLabelName_(s)); });\n\n  deleteTimers_();\n  var allowed = [1, 5, 10, 15, 30];\n  var mins = allowed.indexOf(Number(CONFIG.runEveryMinutes)) >= 0 ? Number(CONFIG.runEveryMinutes) : 10;\n  ScriptApp.newTrigger('runForwarder').timeBased().everyMinutes(mins).create();\n\n  var p = PropertiesService.getScriptProperties();\n  if (!p.getProperty(P_LAST)) {\n    p.setProperty(P_LAST, String(Date.now() - (Number(CONFIG.firstRunLookbackHours) || 0) * 3600000));\n  }\n  if (CONFIG.logToSheet) {\n    var sheet = getLogSheet_();\n    console.log('Log sheet: ' + sheet.getParent().getUrl());\n  }\n  console.log('Timer set: runForwarder will run every ' + mins + ' minutes.');\n  checkSetup();\n  logChangeHistory_('Installed or updated');\n}\n\n/** Prints which store this Gmail account is, and anything that still needs attention. */\nfunction checkSetup() {\n  var account = currentAccount_();\n  var home = homeStore_(account);\n  console.log('Settings version ' + CONFIG.rev + ' (saved ' + CONFIG.savedAt + (CONFIG.savedByName ? ' by ' + CONFIG.savedByName : '') + ')');\n  console.log('This Gmail account: ' + account);\n  console.log(home ? 'Detected store: ' + home.name : 'WARNING: this account is not listed as any store\\'s Gmail on the setup page. Invoices with no store keyword will be held for review.');\n  if (home) {\n    var dests = IFCore.destinationsFor_(CONFIG, home, { includePending: true });\n    dests.forEach(function (d) {\n      console.log('  ' + (d.kind === 'fax-pending' ? 'fax (waiting for fax provider address)' : d.kind) + ': ' + d.address);\n    });\n  }\n  if (CONFIG.readPdfText) {\n    console.log(driveAvailable_() ? 'Reading inside PDFs: on (Drive service found).' :\n      'WARNING: reading inside PDFs is on in the settings, but the Drive service is not added to this project. In the left sidebar, click + next to Services, choose Drive API, click Add, then run setup again.');\n  }\n  IFCore.configWarnings_(CONFIG).forEach(function (w) { console.log(w.level.toUpperCase() + ': ' + w.text); });\n}\n\n/** Shows what WOULD happen to recent emails. Sends nothing and changes no labels. */\nfunction dryRun() { run_(true); }\n\n/** The main job. The timer runs this automatically. */\nfunction runForwarder() { run_(false); }\n\n/** Sends a one-page test to this store's fax and/or Teams channel. */\nfunction sendTestToMyStore() {\n  var account = currentAccount_();\n  var home = homeStore_(account);\n  if (!home) throw new Error('This Gmail account (' + account + ') is not listed as any store\\'s Gmail on the setup page.');\n  var dests = IFCore.destinationsFor_(CONFIG, home);\n  if (!dests.length) throw new Error('No working fax or Teams address for ' + home.name + ' yet.');\n  var html = '<html><body style=\"font-family:Arial,sans-serif\"><h1>Invoice Forwarder test page<\/h1>' +\n    '<p>Store: ' + esc_(home.name) + '<\/p><p>Sent from: ' + esc_(account) + '<\/p><p>Time: ' + esc_(String(new Date())) + '<\/p><\/body><\/html>';\n  var pdf = Utilities.newBlob(html, MimeType.HTML, 'test.html').getAs(MimeType.PDF).setName('Invoice-Forwarder-test.pdf');\n  dests.forEach(function (d) {\n    GmailApp.sendEmail(d.address, CONFIG.systemTag + ' Test page for ' + home.name, d.kind === 'fax' ? (CONFIG.faxBodyText || '') : 'Test post from the Invoice Forwarder.', {\n      attachments: [pdf], name: CONFIG.senderName || 'Invoice Forwarder'\n    });\n    console.log('Sent test to ' + d.kind + ': ' + d.address);\n  });\n}\n\n/** Lists senders that staff trusted or blocked with labels, so you can add them to the setup page address book. */\nfunction showLearnedLists() {\n  var st = loadState_();\n  console.log('Trusted senders (always forward): ' + (st.trusted.length ? st.trusted.join(', ') : 'none'));\n  console.log('Blocked senders (never forward): ' + (st.blocked.length ? st.blocked.join(', ') : 'none'));\n}\n\n/** Clears the trusted/blocked lists learned from labels (run after copying them into the setup page). */\nfunction resetLearnedLists() {\n  var p = PropertiesService.getScriptProperties();\n  p.deleteProperty(P_TRUST);\n  p.deleteProperty(P_BLOCK);\n  console.log('Learned trusted and blocked senders were cleared.');\n}\n\n/** Stops automatic runs. Run setup() to start them again. */\nfunction removeTimer() {\n  deleteTimers_();\n  console.log('Automatic runs stopped. Run setup to start them again.');\n  logChangeHistory_('Turned off');\n}\n\nfunction deleteTimers_() {\n  ScriptApp.getProjectTriggers().forEach(function (t) {\n    if (t.getHandlerFunction() === 'runForwarder') ScriptApp.deleteTrigger(t);\n  });\n}\n\n/* ---------- Main run ---------- */\n\nfunction run_(isDryRun) {\n  var lock = LockService.getScriptLock();\n  if (!lock.tryLock(5000)) { console.log('Another run is still working, so this one was skipped.'); return; }\n  var ctx = null;\n  try {\n    ctx = newContext_(isDryRun);\n    if (!ctx.dryRun) processStaffLabels_(ctx);\n    scanNewMail_(ctx);\n    finish_(ctx);\n  } catch (e) {\n    console.error((e && e.stack) || e);\n    if (ctx && !ctx.dryRun) notifyFatal_(ctx, e);\n    throw e;\n  } finally {\n    lock.releaseLock();\n  }\n}\n\nfunction newContext_(isDryRun) {\n  var account = currentAccount_();\n  return {\n    dryRun: isDryRun, started: Date.now(), state: loadState_(), account: account, home: homeStore_(account),\n    labels: {}, review: [], sent: [], errors: [], excluded: [], staff: [], logRows: [], report: [], notes: [],\n    scanned: 0, stoppedEarly: false\n  };\n}\n\nfunction env_(ctx, inSpam) {\n  return { trusted: ctx.state.trusted, blocked: ctx.state.blocked, homeStoreId: ctx.home ? ctx.home.id : '', inSpam: !!inSpam };\n}\n\nfunction timeLeft_(ctx) { return (Date.now() - ctx.started) < (Number(CONFIG.maxRunSeconds) || 270) * 1000; }\n\nfunction scanNewMail_(ctx) {\n  var p = ctx.state.props;\n  var now = Date.now();\n  var last = Number(p.getProperty(P_LAST)) || 0;\n  var since;\n  if (ctx.dryRun) since = now - (Number(CONFIG.dryRunHours) || 72) * 3600000;\n  else if (!last) since = now - (Number(CONFIG.firstRunLookbackHours) || 0) * 3600000 - 15 * 60000;\n  else since = last - 15 * 60000; // small overlap so nothing slips between runs\n\n  var base = 'after:' + Math.floor(since / 1000) + ' -in:sent -in:drafts -in:chats -from:me';\n  var passes = [{ q: base, spam: false }];\n  if (CONFIG.checkSpam) passes.push({ q: base + ' in:spam', spam: true });\n\n  for (var pi = 0; pi < passes.length && !ctx.stoppedEarly; pi++) {\n    var start = 0, pageSize = 50;\n    while (!ctx.stoppedEarly) {\n      var threads = GmailApp.search(passes[pi].q, start, pageSize);\n      if (!threads.length) break;\n      for (var i = 0; i < threads.length && !ctx.stoppedEarly; i++) {\n        var th = threads[i];\n        var msgs = th.getMessages();\n        for (var j = 0; j < msgs.length; j++) {\n          var m = msgs[j];\n          if (m.getDate().getTime() <= since) continue;\n          if (m.isInTrash() || m.isDraft()) continue;\n          if (ctx.state.handled[m.getId()]) continue;\n          if (!timeLeft_(ctx)) { ctx.stoppedEarly = true; break; }\n          handleNew_(ctx, m, th, passes[pi].spam);\n          ctx.scanned++;\n        }\n      }\n      if (threads.length < pageSize) break;\n      start += pageSize;\n      if (start >= 500) { ctx.stoppedEarly = true; break; }\n    }\n  }\n  if (!ctx.dryRun && !ctx.stoppedEarly) p.setProperty(P_LAST, String(now));\n  if (ctx.stoppedEarly) ctx.notes.push('This run ran out of time before checking every new email. The next run continues where it left off.');\n}\n\nfunction handleNew_(ctx, msg, thread, inSpam) {\n  var info = extractInfo_(msg);\n  if (isSystemMessage_(info)) return;\n  var d = IFCore.decide_(CONFIG, info, env_(ctx, inSpam));\n  if (!inSpam && IFCore.needsPdfText_(CONFIG, info, d)) {\n    info.pdfText = readPdfText_(ctx, info);\n    if (info.pdfText) d = IFCore.decide_(CONFIG, info, env_(ctx, inSpam));\n  }\n  if (inSpam && d.action === 'exclude') d.action = 'ignore';\n  if (d.action === 'ignore') return;\n\n  if (ctx.dryRun) { ctx.report.push({ info: info, d: d }); return; }\n\n  ctx.state.handled[info.id] = Math.floor(Date.now() / 1000);\n  if (d.action === 'exclude') {\n    thread.addLabel(label_(ctx, 'excluded'));\n    ctx.excluded.push(info);\n    log_(ctx, info, 'Excluded', d, '', thread);\n  } else if (d.action === 'review') {\n    thread.addLabel(label_(ctx, 'review'));\n    ctx.review.push({ info: info, d: d, link: thread.getPermalink() });\n    log_(ctx, info, 'Needs review', d, '', thread);\n  } else {\n    deliverAndLabel_(ctx, msg, info, d, thread);\n  }\n}\n\n/* ---------- Staff decisions made with labels ---------- */\n\nfunction processStaffLabels_(ctx) {\n  var n = labelNames_();\n  var jobs = [\n    { name: n.send, kind: 'send' }, { name: n.trust, kind: 'trust' },\n    { name: n.notInvoice, kind: 'dismiss' }, { name: n.block, kind: 'block' }\n  ];\n  (CONFIG.stores || []).forEach(function (s) { jobs.push({ name: storeLabelName_(s), kind: 'sendTo', storeId: s.id }); });\n\n  jobs.forEach(function (job) {\n    var label = GmailApp.getUserLabelByName(job.name);\n    if (!label) return;\n    label.getThreads(0, 25).forEach(function (th) {\n      if (!timeLeft_(ctx)) { ctx.stoppedEarly = true; return; }\n      var msg = pickMessage_(ctx, th);\n      th.removeLabel(label);\n      removeIfPresent_(th, n.review);\n      removeIfPresent_(th, n.error);\n      if (!msg) return;\n      var info = extractInfo_(msg);\n      var sender = IFCore.parseSender_(info.from).email;\n      ctx.state.handled[info.id] = Math.floor(Date.now() / 1000);\n\n      if (job.kind === 'dismiss' || job.kind === 'block') {\n        if (job.kind === 'block' && sender) {\n          addUnique_(ctx.state.blocked, sender);\n          removeItem_(ctx.state.trusted, sender);\n        }\n        th.addLabel(label_(ctx, 'dismissed'));\n        ctx.staff.push((job.kind === 'block' ? 'Blocked sender ' + sender + ': ' : 'Marked not an invoice: ') + info.subject);\n        log_(ctx, info, job.kind === 'block' ? 'Dismissed + blocked sender' : 'Dismissed by staff', null, '', th);\n        return;\n      }\n      if (job.kind === 'trust' && sender) {\n        addUnique_(ctx.state.trusted, sender);\n        removeItem_(ctx.state.blocked, sender);\n      }\n      var plan = IFCore.plan_(CONFIG, info, env_(ctx), job.kind === 'sendTo' ? job.storeId : null);\n      if (IFCore.needsPdfText_(CONFIG, info, { action: 'send', routeKind: plan.routeKind })) {\n        info.pdfText = readPdfText_(ctx, info);\n        if (info.pdfText) plan = IFCore.plan_(CONFIG, info, env_(ctx), null);\n      }\n      if (plan.problem) {\n        th.addLabel(label_(ctx, 'error'));\n        var msgText = plan.problem + '. To pick the store yourself, apply the label \"' + n.sendTo + '/<store name>\".';\n        ctx.errors.push({ info: info, error: msgText, link: th.getPermalink() });\n        log_(ctx, info, 'Error', { reasons: [msgText], storeIds: plan.storeIds }, '', th);\n        return;\n      }\n      plan.action = 'send';\n      plan.reasons = ['Staff applied the label \"' + job.name + '\"'];\n      deliverAndLabel_(ctx, msg, info, plan, th);\n      ctx.staff.push('Sent after staff review: ' + info.subject);\n    });\n  });\n}\n\n// Newest message in the thread that wasn't sent by this account.\nfunction pickMessage_(ctx, thread) {\n  var msgs = thread.getMessages();\n  for (var i = msgs.length - 1; i >= 0; i--) {\n    if (IFCore.parseSender_(msgs[i].getFrom()).email !== ctx.account) return msgs[i];\n  }\n  return msgs.length ? msgs[msgs.length - 1] : null;\n}\n\n/* ---------- Sending ---------- */\n\nfunction deliverAndLabel_(ctx, msg, info, d, thread) {\n  try {\n    var sentTo = deliver_(ctx, msg, info, d, thread);\n    thread.addLabel(label_(ctx, 'sent'));\n    ctx.sent.push({ info: info, to: sentTo });\n    log_(ctx, info, 'Sent', d, sentTo.join('; '), thread);\n  } catch (e) {\n    thread.addLabel(label_(ctx, 'error'));\n    ctx.errors.push({ info: info, error: String((e && e.message) || e), link: thread.getPermalink() });\n    log_(ctx, info, 'Error', d, String((e && e.message) || e), thread);\n  }\n}\n\nfunction deliver_(ctx, msg, info, d, thread) {\n  var blobs = [];\n  if (d.bodyAsPdf) blobs.push(bodyToPdf_(msg, info));\n  (d.files || []).forEach(function (f) { blobs.push(f.blob.copyBlob().setName(f.name)); });\n  if (!blobs.length) throw new Error('Nothing to send.');\n  var total = 0;\n  blobs.forEach(function (b) { total += b.getBytes().length; });\n  if (total > 20 * 1024 * 1024) throw new Error('The attachments are over 20 MB, which is too large to send by email.');\n\n  var sentTo = [], failures = [];\n  var opts = { attachments: blobs, name: CONFIG.senderName || 'Invoice Forwarder' };\n  (d.storeIds || []).forEach(function (id) {\n    var store = IFCore.storeById_(CONFIG, id);\n    IFCore.destinationsFor_(CONFIG, store).forEach(function (dest) {\n      try {\n        if (dest.kind === 'fax') {\n          GmailApp.sendEmail(dest.address, subjectFor_(store, info), CONFIG.faxBodyText || '', opts);\n        } else {\n          GmailApp.sendEmail(dest.address, subjectFor_(store, info), detailsText_(ctx, store, info, d, thread), opts);\n        }\n        sentTo.push(store.name + ' ' + dest.kind);\n      } catch (e) {\n        failures.push(store.name + ' ' + dest.kind + ' (' + ((e && e.message) || e) + ')');\n      }\n    });\n    if (CONFIG.deliveryMode !== 'teams' && !IFCore.faxConfigured_(CONFIG)) {\n      addUnique_(ctx.notes, 'Faxes were skipped because the fax provider email address is still a placeholder on the setup page.');\n    }\n  });\n  if (CONFIG.auditCopyAddress) {\n    try {\n      GmailApp.sendEmail(CONFIG.auditCopyAddress, subjectFor_(IFCore.storeById_(CONFIG, d.storeIds[0]), info),\n        detailsText_(ctx, null, info, d, thread), opts);\n    } catch (e) { failures.push('audit copy (' + ((e && e.message) || e) + ')'); }\n  }\n  if (failures.length) throw new Error('Sent to: ' + (sentTo.join(', ') || 'nothing') + '. Failed: ' + failures.join(', '));\n  if (!sentTo.length) throw new Error('No working destination for this store.');\n  return sentTo;\n}\n\nfunction subjectFor_(store, info) {\n  var s = (CONFIG.systemTag || '[Invoice Forwarder]') + ' ' + (store ? store.name + ': ' : '') + (info.subject || '(no subject)');\n  return s.length > 180 ? s.slice(0, 177) + '...' : s;\n}\n\nfunction detailsText_(ctx, store, info, d, thread) {\n  var lines = [];\n  if (store) lines.push('Store: ' + store.name);\n  lines.push('From: ' + info.from);\n  lines.push('Received: ' + info.date);\n  lines.push('Subject: ' + info.subject);\n  lines.push('Why: ' + (d.reasons || []).concat(d.routeReason ? [d.routeReason] : []).join('; '));\n  lines.push('Received in: ' + ctx.account);\n  try { lines.push('Open in Gmail (signed in as ' + ctx.account + '): ' + thread.getPermalink()); } catch (e) {}\n  lines.push('----------');\n  lines.push(String(info.body || '').slice(0, 3000));\n  return lines.join('\\n');\n}\n\nfunction bodyToPdf_(msg, info) {\n  var html = '';\n  try { html = msg.getBody() || ''; } catch (e) {}\n  if (!html) html = '<pre style=\"white-space:pre-wrap;font-family:Arial,sans-serif\">' + esc_(info.body) + '<\/pre>';\n  var header = '<div style=\"font-family:Arial,sans-serif;font-size:10pt;border-bottom:1px solid #999;margin-bottom:12px;padding-bottom:8px\">' +\n    '<b>From:<\/b> ' + esc_(info.from) + '<br><b>Received:<\/b> ' + esc_(String(info.date)) + '<br><b>Subject:<\/b> ' + esc_(info.subject) + '<\/div>';\n  var doc = '<html><head><meta charset=\"utf-8\"><\/head><body>' + header + html + '<\/body><\/html>';\n  var name = String(info.subject || 'email').replace(/[^A-Za-z0-9 _-]+/g, '').trim().slice(0, 60) || 'email';\n  return Utilities.newBlob(doc, MimeType.HTML, 'email.html').getAs(MimeType.PDF).setName(name + '.pdf');\n}\n\n/* ---------- Review notices, log and state ---------- */\n\nfunction finish_(ctx) {\n  if (ctx.dryRun) { printDryRun_(ctx); return; }\n  saveState_(ctx.state);\n  writeLog_(ctx);\n  sendSummary_(ctx);\n  console.log('Checked ' + ctx.scanned + ' new emails. Sent: ' + ctx.sent.length + '. Needs review: ' + ctx.review.length +\n    '. Excluded: ' + ctx.excluded.length + '. Staff decisions: ' + ctx.staff.length + '. Errors: ' + ctx.errors.length + '.');\n  ctx.notes.forEach(function (n) { console.log('NOTE: ' + n); });\n}\n\nfunction printDryRun_(ctx) {\n  var hours = Number(CONFIG.dryRunHours) || 72;\n  console.log('DRY RUN for ' + ctx.account + (ctx.home ? ' (' + ctx.home.name + ')' : ' (not listed as a store)') +\n    ': last ' + hours + ' hours. Nothing was sent and no labels were changed.');\n  if (!ctx.report.length) console.log('No emails matched. If you expected some, check keywords or add the sender to the address book.');\n  ctx.report.forEach(function (r) {\n    var stores = r.d.storeIds.map(function (id) { return IFCore.storeName_(CONFIG, id); }).join(', ') || '-';\n    var verb = { send: 'WOULD SEND', review: 'WOULD HOLD FOR REVIEW', exclude: 'WOULD EXCLUDE' }[r.d.action] || r.d.action;\n    console.log(verb + ' | to: ' + stores + ' | from: ' + r.info.from + ' | subject: ' + r.info.subject +\n      ' | why: ' + r.d.reasons.concat(r.d.routeReason ? [r.d.routeReason] : []).join('; '));\n  });\n  console.log('Checked ' + ctx.scanned + ' emails.');\n}\n\nfunction sendSummary_(ctx) {\n  if (!ctx.review.length && !ctx.errors.length) return;\n  var n = labelNames_();\n  var to = IFCore.list_(CONFIG.reviewRecipients);\n  if (!to.length) to = [ctx.account];\n  var who = ctx.account + (ctx.home ? ' (' + ctx.home.name + ')' : '');\n  var subject = (CONFIG.systemTag || '[Invoice Forwarder]') + ' ' +\n    (ctx.review.length ? ctx.review.length + ' to review' : '') + (ctx.review.length && ctx.errors.length ? ', ' : '') +\n    (ctx.errors.length ? ctx.errors.length + ' error' + (ctx.errors.length > 1 ? 's' : '') : '') + ' - ' + who;\n\n  var h = ['<div style=\"font-family:Arial,sans-serif;font-size:14px;color:#15232A\">'];\n  if (ctx.review.length) {\n    h.push('<h2 style=\"font-size:18px\">Emails that might be invoices<\/h2>');\n    h.push('<p>These arrived in <b>' + esc_(who) + '<\/b>. Open each one in Gmail while signed in to that account, then apply one label:<\/p>');\n    h.push('<ul><li><b>' + esc_(n.send) + '<\/b>: it is an invoice, forward it (store picked automatically)<\/li>' +\n      '<li><b>' + esc_(n.sendTo) + '/&lt;store&gt;<\/b>: it is an invoice for that store<\/li>' +\n      '<li><b>' + esc_(n.trust) + '<\/b>: forward it, and always forward this sender<\/li>' +\n      '<li><b>' + esc_(n.notInvoice) + '<\/b>: not an invoice, ignore it<\/li>' +\n      '<li><b>' + esc_(n.block) + '<\/b>: not an invoice, and never forward this sender<\/li><\/ul>');\n    h.push(tableHtml_(ctx.review.map(function (r) {\n      return [r.info.from, r.info.subject, r.d.reasons.join('; '), r.d.storeIds.map(function (id) { return IFCore.storeName_(CONFIG, id); }).join(', ') || '?', r.link];\n    }), ['From', 'Subject', 'Why it was held', 'Best guess', '']));\n  }\n  if (ctx.errors.length) {\n    h.push('<h2 style=\"font-size:18px\">Couldn\\'t send<\/h2><p>These have the label <b>' + esc_(n.error) + '<\/b>. Fix the problem, then apply <b>' + esc_(n.send) + '<\/b> to try again.<\/p>');\n    h.push(tableHtml_(ctx.errors.map(function (e) { return [e.info.from, e.info.subject, e.error, '', e.link]; }), ['From', 'Subject', 'Problem', '', '']));\n  }\n  ctx.notes.forEach(function (note) { h.push('<p style=\"color:#8a5a00\">' + esc_(note) + '<\/p>'); });\n  h.push('<p style=\"color:#667\">Sent by the Invoice Forwarder script, settings version ' + esc_(String(CONFIG.rev)) + '.<\/p><\/div>');\n\n  var plain = 'Open Gmail as ' + who + ' and look at the label \"' + n.review + '\".';\n  to.forEach(function (addr) {\n    try { GmailApp.sendEmail(addr, subject, plain, { htmlBody: h.join(''), name: CONFIG.senderName || 'Invoice Forwarder' }); }\n    catch (e) { console.error('Could not send review notice to ' + addr + ': ' + e); }\n  });\n}\n\nfunction tableHtml_(rows, heads) {\n  var cell = 'style=\"border:1px solid #ccd;padding:6px;vertical-align:top\"';\n  var out = '<table style=\"border-collapse:collapse;margin:8px 0 16px\"><tr>' +\n    heads.map(function (x) { return '<th ' + cell + ' align=\"left\">' + esc_(x) + '<\/th>'; }).join('') + '<\/tr>';\n  rows.forEach(function (r) {\n    out += '<tr>' + r.map(function (v, i) {\n      if (i === r.length - 1) return '<td ' + cell + '>' + (v ? '<a href=\"' + esc_(v) + '\">Open in Gmail<\/a>' : '') + '<\/td>';\n      return '<td ' + cell + '>' + esc_(v) + '<\/td>';\n    }).join('') + '<\/tr>';\n  });\n  return out + '<\/table>';\n}\n\nfunction notifyFatal_(ctx, e) {\n  try {\n    var p = PropertiesService.getScriptProperties();\n    var last = Number(p.getProperty(P_FATAL)) || 0;\n    if (Date.now() - last < 6 * 3600000) return; // at most one notice every 6 hours\n    p.setProperty(P_FATAL, String(Date.now()));\n    var to = IFCore.list_(CONFIG.reviewRecipients);\n    if (!to.length) to = [ctx.account];\n    to.forEach(function (addr) {\n      GmailApp.sendEmail(addr, (CONFIG.systemTag || '[Invoice Forwarder]') + ' The script stopped with an error - ' + ctx.account,\n        'The Invoice Forwarder in ' + ctx.account + ' hit an error and may not be forwarding invoices:\\n\\n' + ((e && e.message) || e) +\n        '\\n\\nOpen script.google.com as this account, open the project, and check Executions on the left.');\n    });\n  } catch (ignore) {}\n}\n\nfunction log_(ctx, info, result, d, sentTo, thread) {\n  if (!CONFIG.logToSheet || ctx.dryRun) return;\n  var stores = d && d.storeIds ? d.storeIds.map(function (id) { return IFCore.storeName_(CONFIG, id); }).join(', ') : '';\n  var why = d ? (d.reasons || []).concat(d.routeReason ? [d.routeReason] : []).join('; ') : '';\n  var link = '';\n  try { link = thread.getPermalink(); } catch (e) {}\n  ctx.logRows.push([new Date(), result, info.from, info.subject, stores, sentTo || '', why, link]);\n}\n\nfunction writeLog_(ctx) {\n  if (!CONFIG.logToSheet || !ctx.logRows.length) return;\n  try {\n    var sh = getLogSheet_();\n    sh.getRange(sh.getLastRow() + 1, 1, ctx.logRows.length, ctx.logRows[0].length).setValues(ctx.logRows);\n  } catch (e) { console.error('Could not write to the log sheet: ' + e); }\n}\n\nfunction getLogSheet_() {\n  var p = PropertiesService.getScriptProperties();\n  var id = p.getProperty(P_SHEET), ss = null;\n  if (id) { try { ss = SpreadsheetApp.openById(id); } catch (e) { ss = null; } }\n  if (!ss) {\n    ss = SpreadsheetApp.create('Invoice Forwarder Log - ' + currentAccount_());\n    var first = ss.getSheets()[0];\n    first.setName('Log');\n    first.appendRow(['Time', 'Result', 'From', 'Subject', 'Store', 'Sent to / problem', 'Why', 'Gmail link']);\n    first.setFrozenRows(1);\n    p.setProperty(P_SHEET, ss.getId());\n  }\n  return ss.getSheetByName('Log') || ss.getSheets()[0];\n}\n\nfunction loadState_() {\n  var p = PropertiesService.getScriptProperties();\n  return {\n    props: p,\n    handled: readJson_(p, P_HANDLED, {}),\n    trusted: readJson_(p, P_TRUST, []),\n    blocked: readJson_(p, P_BLOCK, [])\n  };\n}\n\nfunction saveState_(st) {\n  var cutoff = Math.floor(Date.now() / 1000) - 4 * 86400;\n  var ids = Object.keys(st.handled).filter(function (k) { return st.handled[k] >= cutoff; })\n    .sort(function (a, b) { return st.handled[b] - st.handled[a]; }).slice(0, 200);\n  var h = {};\n  ids.forEach(function (k) { h[k] = st.handled[k]; });\n  st.props.setProperties({\n    HANDLED_IDS: JSON.stringify(h),\n    LEARNED_TRUSTED: JSON.stringify(st.trusted.slice(-150)),\n    LEARNED_BLOCKED: JSON.stringify(st.blocked.slice(-150))\n  });\n}\n\n/* ---------- Change history in a Google Sheet or Doc ---------- */\n\n// Adds an entry to the linked change history document: which store, which settings version,\n// who saved those settings, what changed since this store last logged, and the full settings.\nfunction logChangeHistory_(event) {\n  var url = String(CONFIG.historyDocUrl || '').trim();\n  if (!url) return;\n  var account = currentAccount_();\n  try {\n    var p = PropertiesService.getScriptProperties();\n    var lastLogged = Number(p.getProperty('LAST_LOGGED_REV')) || 0;\n    var entries = (CONFIG.history || []).filter(function (h) { return Number(h.rev) > lastLogged; });\n    var home = homeStore_(account);\n    var storeName = home ? home.name : '(not listed as a store)';\n    var changeLines = [];\n    entries.forEach(function (h) {\n      changeLines.push('Version ' + h.rev + ', saved ' + h.savedAt + ' by ' + (h.name || 'unknown') + (h.note ? ': ' + h.note : ''));\n      (h.changes || []).forEach(function (c) { changeLines.push('    ' + c); });\n    });\n    if (!changeLines.length) changeLines.push('No settings changes since this store last logged.');\n    var summary = settingsSummary_();\n    var version = String(CONFIG.savedRev || CONFIG.rev || '');\n\n    if (/\\/spreadsheets\\//.test(url)) {\n      var ss = SpreadsheetApp.openByUrl(url);\n      var sh = ss.getSheetByName('Change history') || ss.insertSheet('Change history');\n      if (sh.getLastRow() === 0) {\n        sh.appendRow(['Time', 'Event', 'Store', 'Store Gmail', 'Settings version', 'Settings saved by', 'Note', 'What changed', 'Full settings']);\n        sh.setFrozenRows(1);\n      }\n      sh.appendRow([new Date(), event, storeName, account, version, CONFIG.savedByName || '', CONFIG.changeNote || '',\n        changeLines.join('\\n').slice(0, 45000), summary.join('\\n').slice(0, 45000)]);\n    } else if (/\\/document\\//.test(url)) {\n      var doc = DocumentApp.openByUrl(url);\n      var body = doc.getBody();\n      body.appendParagraph(event + ': ' + storeName + ', settings version ' + version).setHeading(DocumentApp.ParagraphHeading.HEADING2);\n      body.appendParagraph('Time: ' + new Date() + '. Store Gmail: ' + account + '. Settings saved by: ' + (CONFIG.savedByName || 'unknown') + '.');\n      body.appendParagraph('What changed').setHeading(DocumentApp.ParagraphHeading.HEADING3);\n      changeLines.forEach(function (l) { body.appendListItem(l.trim()).setNestingLevel(/^\\s/.test(l) ? 1 : 0); });\n      body.appendParagraph('Full settings').setHeading(DocumentApp.ParagraphHeading.HEADING3);\n      summary.forEach(function (l) { body.appendListItem(l); });\n      doc.saveAndClose();\n    } else {\n      console.warn('The change history link is not a Google Sheet or Google Doc link, so nothing was logged.');\n      return;\n    }\n    var maxRev = entries.reduce(function (m, h) { return Math.max(m, Number(h.rev) || 0); }, lastLogged);\n    p.setProperty('LAST_LOGGED_REV', String(maxRev));\n    console.log('Added an entry to the change history document.');\n  } catch (e) {\n    console.warn('Could not write to the change history document (' + ((e && e.message) || e) + '). Make sure ' + account + ' has edit access to it.');\n  }\n}\n\nfunction settingsSummary_() {\n  var c = CONFIG, out = [];\n  var yn = function (b) { return b ? 'yes' : 'no'; };\n  var rule = function (v) { return v === 'send' ? 'forward' : 'hold for review'; };\n  out.push('Sends to: ' + ({ both: 'fax and Teams', fax: 'fax only', teams: 'Teams only' }[c.deliveryMode] || c.deliveryMode));\n  out.push('Fax provider format: ' + c.faxAddressTemplate + (IFCore.faxConfigured_(c) ? '' : ' (placeholder)'));\n  out.push('Default Teams channel: ' + (c.defaultTeamsAddress || 'none'));\n  out.push('Review notices to: ' + (IFCore.list_(c.reviewRecipients).join(', ') || 'each store\\'s own Gmail'));\n  out.push('Copy of everything to: ' + (c.auditCopyAddress || 'none'));\n  out.push('Keywords: ' + (IFCore.list_(c.keywords).join(', ') || 'none') + (c.matchPoPatterns ? ', plus purchase order numbers' : ''));\n  out.push('Found in subject: ' + rule(c.rules.subject) + '; attachment name: ' + rule(c.rules.attachment) +\n    '; message text only: ' + rule(c.rules.body) + '; inside a PDF only: ' + rule(c.rules.pdf));\n  out.push('Reads inside PDFs: ' + yn(c.readPdfText) + '; looks for wording inside PDFs: ' + yn(c.pdfWording));\n  out.push('Exclusion phrases: ' + (IFCore.list_(c.exclusionPhrases).join(', ') || 'none') + (c.exclusionCheckBody ? ' (subject and message text)' : ' (subject only)'));\n  out.push('Checks Spam: ' + yn(c.checkSpam) + '; holds attachments from unknown senders: ' + yn(c.reviewUnknownAttachments));\n  out.push('Attachment types: ' + IFCore.list_(c.attachmentTypes).join(', ') + '; message text to PDF: ' + yn(c.bodyToPdf));\n  (c.stores || []).forEach(function (s) {\n    out.push('Store ' + s.name + ': Gmail ' + (s.gmail || 'none') + ', fax ' + (s.faxNumber || 'none') +\n      ', Teams ' + (s.teamsAddress || 'default') + ', keywords ' + (IFCore.list_(s.keywords).join(', ') || 'none'));\n  });\n  (c.addressBook || []).forEach(function (e) {\n    out.push('Sender ' + e.sender + (e.vendor ? ' (' + e.vendor + ')' : '') + ': ' +\n      ({ forward: 'always forward', review: 'always hold for review', exclude: 'never forward' }[e.action] || e.action) +\n      ', store ' + (e.store && e.store !== 'auto' ? IFCore.storeName_(c, e.store) : 'detected automatically'));\n  });\n  out.push('Checks every ' + c.runEveryMinutes + ' minutes; label group ' + c.labelRoot + '; log sheet: ' + yn(c.logToSheet));\n  return out;\n}\n\n/* ---------- Reading text inside PDFs (needs the Drive service) ---------- */\n\nfunction driveAvailable_() {\n  return typeof Drive !== 'undefined' && !!Drive.Files;\n}\n\nfunction readPdfText_(ctx, info) {\n  if (ctx.driveOff) return '';\n  if (!driveAvailable_()) {\n    ctx.driveOff = true;\n    addUnique_(ctx.notes, 'Text inside PDFs could not be read because the Drive service is not added to this Apps Script project. In the left sidebar, click + next to Services, choose Drive API, click Add, then run setup.');\n    return '';\n  }\n  var pdfs = (info.attachments || []).filter(function (a) {\n    return /\\.pdf$/i.test(a.name || '') && (a.size == null || a.size <= 10 * 1024 * 1024);\n  }).slice(0, 3);\n  var out = [];\n  pdfs.forEach(function (a) {\n    if (!timeLeft_(ctx)) return;\n    try { out.push(pdfToText_(a.blob)); }\n    catch (e) { console.warn('Could not read the text in ' + a.name + ': ' + ((e && e.message) || e)); }\n  });\n  return out.join('\\n').slice(0, 40000);\n}\n\n// Converts the PDF to a temporary Google Doc (Google's text recognition also handles scans), reads it, deletes it.\nfunction pdfToText_(blob) {\n  var b = blob.copyBlob().setContentType('application/pdf');\n  var file;\n  if (typeof Drive.Files.create === 'function') {\n    file = Drive.Files.create({ name: 'invoice-forwarder-temp', mimeType: 'application/vnd.google-apps.document' }, b, { ocrLanguage: 'en', fields: 'id' });\n  } else {\n    file = Drive.Files.insert({ title: 'invoice-forwarder-temp', mimeType: 'application/pdf' }, b, { ocr: true, ocrLanguage: 'en' });\n  }\n  try {\n    return DocumentApp.openById(file.id).getBody().getText();\n  } finally {\n    try { Drive.Files.remove(file.id); } catch (e) { console.warn('Could not delete temporary file ' + file.id); }\n  }\n}\n\n/* ---------- Helpers ---------- */\n\nfunction extractInfo_(msg) {\n  var atts = [];\n  try { atts = msg.getAttachments({ includeInlineImages: false, includeAttachments: true }); } catch (e) {}\n  var body = '';\n  try { body = msg.getPlainBody() || ''; } catch (e) {}\n  if (body.length > 30000) body = body.slice(0, 30000);\n  return {\n    id: msg.getId(), from: msg.getFrom(), subject: msg.getSubject() || '', body: body, date: msg.getDate(),\n    attachments: atts.map(function (a) { return { name: a.getName(), size: a.getSize(), type: a.getContentType(), blob: a }; })\n  };\n}\n\nfunction isSystemMessage_(info) {\n  var tag = CONFIG.systemTag || '[Invoice Forwarder]';\n  if ((info.subject || '').indexOf(tag) >= 0) return true;\n  var s = IFCore.parseSender_(info.from);\n  if (/^(mailer-daemon|postmaster)@/.test(s.email)) return true;\n  var faxDomain = IFCore.faxDomain_(CONFIG);\n  if (faxDomain && (s.domain === faxDomain || s.domain.slice(-(faxDomain.length + 1)) === '.' + faxDomain)) return true;\n  return false;\n}\n\nfunction currentAccount_() { return String(Session.getEffectiveUser().getEmail() || '').toLowerCase(); }\n\nfunction homeStore_(account) {\n  return (CONFIG.stores || []).filter(function (s) { return String(s.gmail || '').trim().toLowerCase() === account; })[0] || null;\n}\n\nfunction labelNames_() {\n  var r = String(CONFIG.labelRoot || 'Invoice').replace(/[\\/\\\\]/g, '-').trim() || 'Invoice';\n  return {\n    root: r, review: r + '/Needs Review', send: r + '/Send', sendTo: r + '/Send to', notInvoice: r + '/Not Invoice',\n    block: r + '/Block Sender', trust: r + '/Trust Sender', sent: r + '/Sent', dismissed: r + '/Dismissed',\n    excluded: r + '/Excluded', error: r + '/Error'\n  };\n}\n\nfunction storeLabelName_(store) {\n  return labelNames_().sendTo + '/' + String(store.name || store.id).replace(/[\\/\\\\]/g, '-').trim();\n}\n\nfunction label_(ctx, key) {\n  if (!ctx.labels[key]) ctx.labels[key] = getOrCreateLabel_(labelNames_()[key]);\n  return ctx.labels[key];\n}\n\nfunction getOrCreateLabel_(name) {\n  var existing = GmailApp.getUserLabelByName(name);\n  if (existing) return existing;\n  var parts = name.split('/'), path = '';\n  for (var i = 0; i < parts.length; i++) {\n    path = path ? path + '/' + parts[i] : parts[i];\n    if (!GmailApp.getUserLabelByName(path)) GmailApp.createLabel(path);\n  }\n  return GmailApp.getUserLabelByName(name);\n}\n\nfunction removeIfPresent_(thread, name) {\n  var l = GmailApp.getUserLabelByName(name);\n  if (l) thread.removeLabel(l);\n}\n\nfunction readJson_(p, key, fallback) {\n  try { var v = p.getProperty(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; }\n}\n\nfunction addUnique_(arr, v) { if (arr.indexOf(v) < 0) arr.push(v); }\nfunction removeItem_(arr, v) { var i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); }\n\nfunction esc_(s) {\n  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/<\/g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\n}\n";
+</script>
+<script>
+(function () {
+'use strict';
+
+/* ---------- Basics ---------- */
+var $ = function (s, el) { return (el || document).querySelector(s); };
+var $$ = function (s, el) { return Array.prototype.slice.call((el || document).querySelectorAll(s)); };
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+function fmtDate(iso) {
+  if (!iso) return '';
+  var d = new Date(iso);
+  if (isNaN(d)) return '';
+  return d.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+var DRAFT_KEY = 'invoice-forwarder-draft-v1';
+
+var DEFAULT_CFG = {
+  version: 1, rev: 0, savedAt: '',
+  stores: [1].map(function (n) {
+    return { id: 's' + n, name: 'Store ' + n, gmail: '', faxNumber: '', teamsAddress: '', keywords: [] };
+  }),
+  deliveryMode: 'both',
+  faxAddressTemplate: '1{number}@REPLACE-WITH-FAX-PROVIDER.com',
+  defaultTeamsAddress: '',
+  reviewRecipients: [],
+  auditCopyAddress: '',
+  senderName: 'Pharmacy Invoice Forwarder',
+  faxBodyText: '',
+  keywords: ['invoice', 'order confirmation'],
+  matchPoPatterns: true,
+  rules: { subject: 'send', attachment: 'send', body: 'review', pdf: 'review' },
+  readPdfText: true,
+  pdfWording: true,
+  exclusionPhrases: ['webinar', 'newsletter'],
+  exclusionCheckBody: false,
+  checkSpam: true,
+  reviewUnknownAttachments: false,
+  attachmentTypes: ['pdf', 'tif', 'tiff', 'png', 'jpg', 'jpeg'],
+  minImageKB: 20,
+  bodyToPdf: true,
+  alwaysIncludeBody: false,
+  multiStoreMatch: 'review',
+  fallbackStoreId: '',
+  addressBook: [],
+  labelRoot: 'Invoice',
+  systemTag: '[Invoice Forwarder]',
+  runEveryMinutes: 10,
+  firstRunLookbackHours: 0,
+  dryRunHours: 72,
+  maxRunSeconds: 270,
+  logToSheet: true,
+  historyDocUrl: 'https://docs.google.com/spreadsheets/d/1yWo12xppdqDGgbM6YtfA7Bn8mjgb8NK7AtN557LEkCI/edit',
+  savedByName: '',
+  changeNote: '',
+  history: []
+};
+
+function normalize(c) {
+  c = c || {};
+  var out = clone(DEFAULT_CFG);
+  Object.keys(c).forEach(function (k) { if (c[k] !== undefined && k in out) out[k] = c[k]; });
+  out.rules = Object.assign(clone(DEFAULT_CFG.rules), c.rules || {});
+  ['keywords', 'exclusionPhrases', 'attachmentTypes', 'reviewRecipients'].forEach(function (k) { out[k] = IFCore.list_(out[k]); });
+  var seen = {};
+  out.stores = (Array.isArray(out.stores) ? out.stores : []).map(function (s, i) {
+    var id = String(s.id || ('s' + (i + 1)));
+    while (seen[id]) id = 's' + Math.random().toString(36).slice(2, 7);
+    seen[id] = true;
+    return { id: id, name: s.name || '', gmail: s.gmail || '', faxNumber: s.faxNumber || '', teamsAddress: s.teamsAddress || '', keywords: IFCore.list_(s.keywords) };
+  });
+  out.addressBook = (Array.isArray(out.addressBook) ? out.addressBook : []).map(function (e) {
+    return {
+      sender: e.sender || '', vendor: e.vendor || '',
+      action: ['forward', 'review', 'exclude'].indexOf(e.action) >= 0 ? e.action : 'forward',
+      store: seen[e.store] ? e.store : 'auto'
+    };
+  });
+  if (out.fallbackStoreId && !seen[out.fallbackStoreId]) out.fallbackStoreId = '';
+  ['minImageKB', 'runEveryMinutes', 'firstRunLookbackHours', 'dryRunHours', 'maxRunSeconds'].forEach(function (k) { out[k] = Number(out[k]) || 0; });
+  if ([5, 10, 15, 30].indexOf(out.runEveryMinutes) < 0) out.runEveryMinutes = 10;
+  if (!out.dryRunHours) out.dryRunHours = 72;
+  if (!out.maxRunSeconds) out.maxRunSeconds = 270;
+  if (!out.labelRoot) out.labelRoot = 'Invoice';
+  if (!out.systemTag) out.systemTag = '[Invoice Forwarder]';
+  out.history = Array.isArray(out.history) ? out.history.slice(-15) : [];
+  return out;
+}
+
+var app = {
+  cfg: normalize(DEFAULT_CFG),
+  savedCfgJson: JSON.stringify(normalize(DEFAULT_CFG)),
+  savedRev: 0, savedAt: '', savedBy: '',
+  dirty: false, loaded: false,
+  db: null, user: null, downloads: null, userId: null, canWrite: null, readOnly: false, dbMissing: false,
+  installs: {}, versions: [], pendingRemote: null, banner: null,
+  view: 'stores', undo: null,
+  test: { from: 'Billing <invoices@wholesaler-example.com>', subject: 'Invoice 448812 for your order', body: 'Thank you for your order. Your invoice is attached.', att: 'Invoice_448812.pdf', pdf: '', home: '', spam: false }
+};
+
+/* ---------- Paths and field binding ---------- */
+function setPath(obj, path, val) {
+  var parts = path.split('.');
+  var o = obj;
+  for (var i = 0; i < parts.length - 1; i++) o = o[/^\d+$/.test(parts[i]) ? Number(parts[i]) : parts[i]];
+  var last = parts[parts.length - 1];
+  o[/^\d+$/.test(last) ? Number(last) : last] = val;
+}
+function getPath(obj, path) {
+  return path.split('.').reduce(function (o, p) { return o == null ? undefined : o[/^\d+$/.test(p) ? Number(p) : p]; }, obj);
+}
+function readVal(el) {
+  if (el.type === 'checkbox') return el.checked;
+  if (el.type === 'number') return Number(el.value) || 0;
+  if (el.hasAttribute('data-list')) return IFCore.list_(el.value);
+  if (el.dataset.num !== undefined) return Number(el.value) || 0;
+  return el.value;
+}
+function val(path) {
+  var v = getPath(app.cfg, path);
+  if (Array.isArray(v)) return esc(v.join('\n'));
+  return esc(v == null ? '' : v);
+}
+function txt(path, opts) {
+  opts = opts || {};
+  var v = getPath(app.cfg, path);
+  var shown = Array.isArray(v) ? esc(v.join(', ')) : val(path);
+  return '<input type="' + (opts.type || 'text') + '" data-k="' + path + '" value="' + shown + '"' + (Array.isArray(v) ? ' data-list' : '') +
+    (opts.placeholder ? ' placeholder="' + esc(opts.placeholder) + '"' : '') +
+    (opts.inputmode ? ' inputmode="' + opts.inputmode + '"' : '') +
+    (opts.id ? ' id="' + opts.id + '"' : '') + ' autocomplete="off" spellcheck="false">';
+}
+function area(path, rows, placeholder) {
+  return '<textarea data-k="' + path + '" data-list rows="' + (rows || 3) + '"' + (placeholder ? ' placeholder="' + esc(placeholder) + '"' : '') + ' spellcheck="false">' + val(path) + '</textarea>';
+}
+function chk(path, title, sub) {
+  return '<label class="check"><input type="checkbox" data-k="' + path + '"' + (getPath(app.cfg, path) ? ' checked' : '') + '><span><b>' + title + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</span></label>';
+}
+function storeOptions(kind, selected) {
+  var first = { book: [['auto', 'Detect automatically']], fallback: [['', 'Hold for review']], testhome: [['', 'A Gmail account not listed here']] }[kind] || [];
+  var opts = first.concat(app.cfg.stores.map(function (s, i) { return [s.id, s.name || ('Store ' + (i + 1))]; }));
+  return opts.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === selected ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('');
+}
+function select(path, options) {
+  var cur = getPath(app.cfg, path);
+  return '<select data-k="' + path + '"' + (typeof cur === 'number' ? ' data-num' : '') + '>' + options.map(function (o) {
+    return '<option value="' + esc(o[0]) + '"' + (String(o[0]) === String(cur) ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+  }).join('') + '</select>';
+}
+
+/* ---------- Views ---------- */
+function renderStores() {
+  var html = '<h2>Stores</h2>' +
+    '<p class="lead">One entry per pharmacy. The store’s Gmail address tells the script which inbox it’s running in. Store keywords let an invoice that lands in the wrong inbox still reach the right store.</p>' +
+    '<div class="route" aria-label="How each email is sorted"><div class="route-src">Every new email</div><div class="route-lanes">' +
+    '<div class="lane send"><b>Forward</b><span>to the store’s fax and Teams channel</span></div>' +
+    '<div class="lane review"><b>Hold for review</b><span>staff get an email and decide with a Gmail label</span></div>' +
+    '<div class="lane exclude"><b>Exclude</b><span>labeled so you can see it, never sent</span></div></div></div>' +
+    '<div class="stores">';
+  app.cfg.stores.forEach(function (s, i) {
+    var p = 'stores.' + i + '.';
+    html += '<div class="store">' +
+      '<div class="store-num">' + (i + 1) + '</div><div>' +
+      '<div class="store-head"><h3 data-storetitle="' + i + '">' + esc(s.name || ('Store ' + (i + 1))) + '</h3>' +
+      (app.cfg.stores.length > 1 ? '<button class="linkbtn danger" data-act="remove-store" data-i="' + i + '">Remove</button>' : '') + '</div>' +
+      '<div class="row">' +
+      '<label class="f"><span>Store name</span>' + txt(p + 'name', { placeholder: 'Main Street Pharmacy' }) + '</label>' +
+      '<label class="f"><span>Store’s Gmail address</span>' + txt(p + 'gmail', { type: 'email', placeholder: 'mainstreet.rx@gmail.com' }) + '</label>' +
+      '<label class="f"><span>Fax number</span>' + txt(p + 'faxNumber', { type: 'tel', placeholder: '(508) 555-0123', inputmode: 'tel' }) +
+      '<div class="faxprev" data-faxprev="' + i + '"></div></label>' +
+      '<label class="f"><span>Teams channel email</span>' + txt(p + 'teamsAddress', { type: 'email', placeholder: 'Leave blank to use the default channel' }) + '</label>' +
+      '</div>' +
+      '<label class="f"><span>Store keywords</span>' + area(p + 'keywords', 3, 'Main Street\nDEA AB1234567\nAccount 123456') +
+      '<small>Words that appear only on this store’s invoices, one per line: the full store name, street address, DEA or NCPDP number, and this store’s account number with each wholesaler. They’re checked in the subject, message text and attachment names' + (app.cfg.readPdfText ? ', and inside PDFs when those don’t name a store' : '') + '.</small></label>' +
+      '</div></div>';
+  });
+  html += '</div><button class="btn" data-act="add-store">Add another store</button>' +
+    '<p class="hint">Add one entry for each pharmacy location that receives invoices.</p>';
+  $('#v-stores').innerHTML = html;
+  updateFaxPreviews();
+}
+
+function renderDelivery() {
+  var c = app.cfg;
+  var html = '<h2>Where invoices go</h2>' +
+    '<p class="lead">Choose the destinations, then fill in the addresses the script sends to. Every store uses the same fax provider format; each store’s own fax number goes into it.</p>' +
+    '<div class="group"><h3>Send invoices to</h3><div class="radio-set">' +
+    [['both', 'Fax and Teams'], ['fax', 'Fax only'], ['teams', 'Teams only']].map(function (o) {
+      return '<label><input type="radio" name="deliveryMode" data-k="deliveryMode" value="' + o[0] + '"' + (c.deliveryMode === o[0] ? ' checked' : '') + '> ' + o[1] + '</label>';
+    }).join('') + '</div></div>' +
+    '<div class="group"><h3>Fax</h3>' +
+    '<label class="f"><span>Fax provider email format</span>' + txt('faxAddressTemplate', { placeholder: '1{number}@your-fax-provider.com' }) +
+    '<div id="faxState"></div>' +
+    '<small>Ask PioneerRx or your fax provider for the email-to-fax address format. Write <code>{number}</code> where the 10-digit fax number goes. If they need a leading 1, write <code>1{number}@…</code>. Until this is filled in, nothing is faxed.</small></label>' +
+    '<label class="f"><span>Text on the fax cover (optional)</span>' + txt('faxBodyText', { placeholder: 'Leave blank to send only the invoice pages' }) +
+    '<small>Most providers turn the email text into a cover page. Leaving it blank saves a page per fax.</small></label></div>' +
+    '<div class="group"><h3>Teams</h3>' +
+    '<label class="f"><span>Default Teams channel email</span>' + txt('defaultTeamsAddress', { type: 'email', placeholder: 'invoices-abc123@amer.teams.ms' }) +
+    '<small>In Teams, open the channel, select More options (⋯) and then Get email address. A store with its own channel address on the Stores step uses that one instead.</small></label></div>' +
+    '<div class="group"><h3>People who check held emails</h3>' +
+    '<label class="f"><span>Send review notices to</span>' + area('reviewRecipients', 3, 'manager@gmail.com\nreview-channel@amer.teams.ms') +
+    '<small>One email address per line. A Teams channel address works too. If this is empty, each store’s Gmail emails itself.</small></label>' +
+    '<label class="f"><span>Send a copy of everything forwarded to (optional)</span>' + txt('auditCopyAddress', { type: 'email', placeholder: 'records@gmail.com' }) +
+    '<small>Useful as a backup record. Each copy counts toward the daily sending limit.</small></label>' +
+    '<label class="f"><span>Sender name</span>' + txt('senderName') + '<small>The name shown on forwarded emails.</small></label></div>';
+  $('#v-delivery').innerHTML = html;
+  updateFaxState();
+}
+
+function renderDetection() {
+  var ruleOpts = [['send', 'Forward automatically'], ['review', 'Hold for review']];
+  var html = '<h2>What counts as an invoice</h2>' +
+    '<p class="lead">The script looks for invoice wording in the subject, attachment names and message text. Where the wording is found decides whether it forwards right away or asks someone to check.</p>' +
+    '<div class="group"><h3>Invoice wording</h3>' +
+    '<label class="f"><span>Keywords</span>' + area('keywords', 4, 'invoice\norder confirmation') +
+    '<small>One per line. A keyword also matches longer forms (“invoice” matches “invoices” and “invoiced”). Keywords of 3 letters or fewer, like INV, match only as a whole word. Capitals don’t matter.</small>' +
+    '<div class="chips" aria-label="Suggested keywords">' + ['statement', 'credit memo', 'packing slip', 'INV', 'order acknowledgement', 'billing'].map(function (k) {
+      return '<button class="chip" data-act="add-keyword" data-word="' + esc(k) + '">Add “' + esc(k) + '”</button>';
+    }).join('') + '</div></label>' +
+    chk('matchPoPatterns', 'Recognize purchase order numbers', 'Matches PO#, PO No., P.O. Number, PO Num, Purchase Order and “PO 123456”, but not “P.O. Box”.') +
+    '</div>' +
+    '<div class="group"><h3>When wording is found</h3><p>Message text is noisier than a subject line, so by default a match found only there is held for review.</p>' +
+    '<table class="rules"><thead><tr><th>Found in</th><th>What to do</th></tr></thead><tbody>' +
+    '<tr><td>Subject</td><td>' + select('rules.subject', ruleOpts) + '</td></tr>' +
+    '<tr><td>Attachment file name</td><td>' + select('rules.attachment', ruleOpts) + '</td></tr>' +
+    '<tr><td>Message text only</td><td>' + select('rules.body', ruleOpts) + '</td></tr>' +
+    '<tr><td>Inside a PDF only</td><td>' + select('rules.pdf', ruleOpts) + '</td></tr>' +
+    '</tbody></table><p class="hint">“Inside a PDF only” applies when reading inside PDFs and looking for wording there are both turned on below.</p></div>' +
+    '<div class="group"><h3>Reading inside PDFs</h3><p>Some invoices name the store or account number only inside the PDF. The script can read the PDF’s text, scanned PDFs included, using Google Drive’s text recognition.</p>' +
+    chk('readPdfText', 'Read the text inside PDF attachments to find the store', 'Used only when the subject, message text and address book don’t settle which store it’s for. Needs one extra install step: adding the Drive service to the script.') +
+    chk('pdfWording', 'Also look for invoice wording inside PDFs', 'Catches PDFs with vague names like Scan_0042.pdf. Each PDF checked this way adds a few seconds to a run.') +
+    '</div>' +
+    '<div class="group"><h3>Exclusions</h3>' +
+    '<label class="f"><span>Never forward emails whose subject contains</span>' + area('exclusionPhrases', 3, 'webinar\nnewsletter') +
+    '<small>One per line. These are labeled Excluded so you can still find them. Senders in the address book set to “always forward” ignore this list.</small></label>' +
+    chk('exclusionCheckBody', 'Check the message text for these phrases too', 'Stricter, but a phrase in a footer could exclude a real invoice.') + '</div>' +
+    '<div class="group"><h3>Catching more</h3>' +
+    chk('checkSpam', 'Check the Spam folder too', 'Matches found in Spam are always held for review, never forwarded automatically.') +
+    chk('reviewUnknownAttachments', 'Hold any attachment from an unknown sender for review', 'Catches invoices that use none of the keywords, but also flags other attachments. Useful while onboarding new wholesalers.') + '</div>' +
+    '<div class="group"><h3>What gets sent</h3>' +
+    '<label class="f"><span>Attachment types to forward</span>' + txt('attachmentTypes', { placeholder: 'pdf, tif, png, jpg' }) +
+    '<small>File endings, separated by commas. Add doc, docx, xls or xlsx only if your fax provider accepts them.</small></label>' +
+    '<div class="row"><label class="f"><span>Skip images smaller than (KB)</span><input type="number" min="0" data-k="minImageKB" value="' + val('minImageKB') + '">' +
+    '<small>Skips logos and signature images.</small></label></div>' +
+    chk('bodyToPdf', 'Turn the message text into a PDF when there’s no attachment', 'Needed for wholesalers that put the invoice in the email itself.') +
+    chk('alwaysIncludeBody', 'Always add the message text as a first page', 'Even when there is an attachment. Adds a page to every fax.') + '</div>' +
+    '<div class="group"><h3>Picking the store</h3><p>The store is chosen in this order: the address book, then store keywords in the email, then store keywords inside the PDF (when reading inside PDFs is on), then the store whose Gmail received it.</p>' +
+    '<label class="f"><span>If an email mentions more than one store</span>' + select('multiStoreMatch', [['review', 'Hold for review'], ['all', 'Send to every store it mentions']]) + '</label>' +
+    '<label class="f"><span>If the store can’t be worked out</span><select data-k="fallbackStoreId" data-storeselect="fallback">' + storeOptions('fallback', app.cfg.fallbackStoreId) + '</select>' +
+    '<small>This only happens when an email arrives in a Gmail account that isn’t listed on the Stores step.</small></label></div>';
+  $('#v-detection').innerHTML = html;
+}
+
+function renderSenders() {
+  var book = app.cfg.addressBook;
+  var html = '<h2>Sender address book</h2>' +
+    '<p class="lead">For wholesalers whose invoices don’t use the usual wording, or arrive in the message text, add the sender here. A domain like <code>mckesson.com</code> covers every address at it; a full address covers just that one.</p>';
+  if (!book.length) {
+    html += '<div class="empty">No senders yet. Add your wholesalers so their invoices are always forwarded, even without invoice wording.</div>';
+  } else {
+    html += '<div class="tbl-wrap"><table class="book"><thead><tr><th>Email or domain</th><th>Vendor</th><th>What to do</th><th>Store</th><th><span class="sr">Remove</span></th></tr></thead><tbody>';
+    book.forEach(function (e, i) {
+      var p = 'addressBook.' + i + '.';
+      html += '<tr><td>' + txt(p + 'sender', { placeholder: 'orders@wholesaler.com' }) + '</td>' +
+        '<td>' + txt(p + 'vendor', { placeholder: 'Wholesaler name' }) + '</td>' +
+        '<td>' + select(p + 'action', [['forward', 'Always forward'], ['review', 'Always hold for review'], ['exclude', 'Never forward']]) + '</td>' +
+        '<td><select data-k="' + p + 'store" data-storeselect="book">' + storeOptions('book', e.store) + '</select></td>' +
+        '<td><button class="linkbtn danger" data-act="remove-sender" data-i="' + i + '">Remove</button></td></tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+  html += '<div class="toolbar"><button class="btn" data-act="add-sender">Add a sender</button></div>' +
+    '<details class="box"><summary>Add several at once</summary>' +
+    '<label class="f"><span>One per line: email or domain, then a comma and the vendor name</span>' +
+    '<textarea id="bulkSenders" rows="4" placeholder="mckesson.com, McKesson\norders@smallvendor.com, Small Vendor"></textarea></label>' +
+    '<button class="btn" data-act="paste-senders">Add these senders</button></details>' +
+    '<div class="group"><h3>Senders staff taught the script</h3><p>When staff apply the Trust Sender or Block Sender label, that store’s script remembers the sender. To make it apply to every store, open that store’s Apps Script project, run <code>showLearnedLists</code>, and add the senders here.</p></div>';
+  $('#v-senders').innerHTML = html;
+}
+
+function labelList() {
+  var r = String(app.cfg.labelRoot || 'Invoice').replace(/[\/\\]/g, '-').trim() || 'Invoice';
+  var rows = [
+    ['script', r + '/Needs Review', 'Might be an invoice. Waiting for someone to decide.'],
+    ['staff', r + '/Send', 'It’s an invoice. Forward it, picking the store automatically.'],
+    ['staff', r + '/Send to/<store name>', 'It’s an invoice for this store. One label per store.'],
+    ['staff', r + '/Trust Sender', 'Forward it, and always forward this sender from now on.'],
+    ['staff', r + '/Not Invoice', 'Not an invoice. Ignore it.'],
+    ['staff', r + '/Block Sender', 'Not an invoice, and never forward this sender.'],
+    ['script', r + '/Sent', 'Forwarded.'],
+    ['script', r + '/Dismissed', 'Staff said it isn’t an invoice.'],
+    ['script', r + '/Excluded', 'Matched an exclusion, so it wasn’t sent.'],
+    ['script', r + '/Error', 'Sending failed. The review notice says why.']
+  ];
+  return rows;
+}
+function renderLabelsView() {
+  var html = '<h2>Labels and schedule</h2>' +
+    '<p class="lead">The script uses Gmail labels to show what it did and to take instructions from staff. Staff apply a label; within a few minutes the script acts on it and removes the label.</p>' +
+    '<div class="group"><h3>Gmail labels</h3>' +
+    '<div class="row"><label class="f"><span>Label group name</span>' + txt('labelRoot', { placeholder: 'Invoice' }) + '</label></div>' +
+    '<ul class="labels" id="labelPreview"></ul></div>' +
+    '<div class="group"><h3>Schedule</h3><div class="row">' +
+    '<label class="f"><span>Check for new email every</span>' + select('runEveryMinutes', [[5, '5 minutes'], [10, '10 minutes'], [15, '15 minutes'], [30, '30 minutes']]) + '</label>' +
+    '<label class="f"><span>On first install, also check the last (hours)</span><input type="number" min="0" max="720" data-k="firstRunLookbackHours" value="' + val('firstRunLookbackHours') + '">' +
+    '<small>0 means start with email arriving after setup. Older invoices you already handled won’t be sent again.</small></label>' +
+    '<label class="f"><span>Dry run looks back (hours)</span><input type="number" min="1" max="720" data-k="dryRunHours" value="' + val('dryRunHours') + '"></label>' +
+    '</div></div>' +
+    '<div class="group"><h3>Records</h3>' +
+    chk('logToSheet', 'Keep a log in Google Sheets', 'Each store’s Google Drive gets a sheet listing every email forwarded, held, excluded or failed.') +
+    '<label class="f"><span>Change history document (Google Sheet or Doc link)</span>' + txt('historyDocUrl', { placeholder: 'https://docs.google.com/spreadsheets/d/…' }) +
+    '<small>Each time someone runs setup in a store, the script adds an entry here: the store, the settings version, who saved those settings, their note, what changed, and the full settings. Share the document with every store’s Gmail address as an editor. A Sheet is easier to sort and filter than a Doc.</small></label>' +
+    '<details class="box"><summary>Advanced</summary>' +
+    '<label class="f"><span>Tag added to every email the script sends</span>' + txt('systemTag') +
+    '<small>The script ignores incoming email with this tag, so it never forwards its own notices. Change it only if it clashes with real subjects.</small></label></details></div>';
+  $('#v-labels').innerHTML = html;
+  updateLabelPreview();
+}
+function updateLabelPreview() {
+  var el = $('#labelPreview');
+  if (!el) return;
+  el.innerHTML = labelList().map(function (r) {
+    return '<li><code>' + esc(r[1]) + '</code><span><span class="who">' + (r[0] === 'staff' ? 'Staff apply' : 'Script applies') + '</span>' + esc(r[2]) + '</span></li>';
+  }).join('');
+}
+
+var PRESETS = {
+  pdf: { from: 'Billing <invoices@wholesaler-example.com>', subject: 'Invoice 448812 for your order', body: 'Thank you for your order. Your invoice is attached.', att: 'Invoice_448812.pdf', pdf: '' },
+  inpdf: { from: 'Billing <invoices@wholesaler-example.com>', subject: 'Invoice 5521', body: 'Your invoice is attached.', att: 'Invoice_5521.pdf', pdf: 'INVOICE 5521\nBill to: (type one of your store keywords here)\nAccount 778812' },
+  body: { from: 'New Supplier <orders@newsupplier-example.com>', subject: 'Your order has shipped', body: 'Order details\nPO Number: 77120\nShip to: Main Street\nItems: 3\nTotal: $412.18', att: '', pdf: '' },
+  news: { from: 'Marketing <news@wholesaler-example.com>', subject: 'Join our invoice automation webinar', body: 'Save your seat for our free webinar.', att: '', pdf: '' },
+  vague: { from: 'Accounts <ar@vendor-example.com>', subject: 'Documents', body: 'Please see attached.', att: 'Scan_0042.pdf', pdf: 'INVOICE\nInvoice number 90311' }
+};
+function renderTestView() {
+  var t = app.test;
+  var html = '<h2>Try an email</h2>' +
+    '<p class="lead">Type in what an email looks like, and see what the script would do with your current settings. This runs the same decision rules as the script itself.</p>' +
+    '<div class="presets"><button class="btn small" data-act="preset" data-p="pdf">Wholesaler invoice PDF</button>' +
+    '<button class="btn small" data-act="preset" data-p="inpdf">Store named only in the PDF</button>' +
+    '<button class="btn small" data-act="preset" data-p="body">Invoice in the message text</button>' +
+    '<button class="btn small" data-act="preset" data-p="vague">Attachment, no wording</button>' +
+    '<button class="btn small" data-act="preset" data-p="news">Marketing email</button></div>' +
+    '<div class="tester"><div>' +
+    '<label class="f"><span>From</span><input type="text" data-t="from" value="' + esc(t.from) + '" spellcheck="false"></label>' +
+    '<label class="f"><span>Subject</span><input type="text" data-t="subject" value="' + esc(t.subject) + '"></label>' +
+    '<label class="f"><span>Message text</span><textarea data-t="body" rows="6">' + esc(t.body) + '</textarea></label>' +
+    '<label class="f"><span>Attachment file names</span><input type="text" data-t="att" value="' + esc(t.att) + '" placeholder="Invoice_123.pdf, logo.png" spellcheck="false"><small>Separate with commas. Leave blank for none.</small></label>' +
+    '<label class="f"><span>Text inside the PDF</span><textarea data-t="pdf" rows="3" placeholder="Bill to: Elm Ave Pharmacy, Account 778812">' + esc(t.pdf) + '</textarea><small>Optional. Used only if reading inside PDFs is turned on and there’s a PDF attachment.</small></label>' +
+    '<label class="f"><span>Arrived in</span><select data-t="home" data-storeselect="testhome">' + storeOptions('testhome', t.home) + '</select></label>' +
+    '<label class="check"><input type="checkbox" data-t="spam"' + (t.spam ? ' checked' : '') + '><span><b>It landed in Spam</b></span></label>' +
+    '</div><div id="testResult" aria-live="polite"></div></div>';
+  $('#v-test').innerHTML = html;
+  renderTestResult();
+}
+function renderTestResult() {
+  var el = $('#testResult');
+  if (!el) return;
+  var t = app.test, c = app.cfg;
+  var info = { from: t.from, subject: t.subject, body: t.body, attachments: IFCore.list_(t.att).map(function (n) { return { name: n, size: null }; }) };
+  var env = { homeStoreId: t.home, inSpam: t.spam, trusted: [], blocked: [] };
+  var d = IFCore.decide_(c, info, env);
+  var readPdf = !t.spam && IFCore.needsPdfText_(c, info, d);
+  if (readPdf) { info.pdfText = t.pdf || ''; d = IFCore.decide_(c, info, env); }
+  var titles = { send: 'Forward', review: 'Hold for review', exclude: 'Exclude', ignore: 'Ignore' };
+  var subs = { send: 'Sent automatically', review: 'Staff get a review notice', exclude: 'Labeled Excluded, not sent', ignore: 'Not treated as an invoice' };
+  var rows = '';
+  if (d.action === 'send' || d.action === 'review') {
+    var stores = d.storeIds.map(function (id) {
+      var s = IFCore.storeById_(c, id);
+      var dests = IFCore.destinationsFor_(c, s, { includePending: true }).map(function (x) {
+        return x.kind === 'fax-pending' ? 'fax (waiting for provider address)' : x.kind === 'fax' ? 'fax ' + x.address : 'Teams ' + x.address;
+      });
+      return '<li><b>' + esc(s ? s.name : id) + '</b>' + (dests.length ? ': ' + esc(dests.join(', ')) : ': no destination set') + '</li>';
+    }).join('');
+    rows += '<dt>Store</dt><dd>' + (stores ? '<ul>' + stores + '</ul>' : 'Not decided') + (d.routeReason ? '<div class="hint">' + esc(d.routeReason) + '</div>' : '') + '</dd>';
+    var files = d.files.map(function (f) { return f.name; });
+    if (d.bodyAsPdf) files.unshift('Message text as a PDF');
+    if (readPdf) rows += '<dt>PDF text</dt><dd>' + (t.pdf ? 'Read to help decide' : 'Would be read, but none was entered above') + '</dd>';
+    rows += '<dt>Pages sent</dt><dd>' + (files.length ? esc(files.join(', ')) : 'Nothing') + '</dd>';
+  }
+  var reasons = d.reasons.length ? '<ul>' + d.reasons.map(function (r) { return '<li>' + esc(r) + '</li>'; }).join('') + '</ul>' :
+    'No invoice wording, and the sender isn’t in the address book. To catch emails like this, add the sender to the address book.';
+  rows += '<dt>Why</dt><dd>' + reasons + '</dd>';
+  el.innerHTML = '<div class="rxlabel ' + d.action + '"><header><small>' + subs[d.action] + '</small><strong>' + titles[d.action] + '</strong></header>' +
+    '<div class="body"><dl>' + rows + '</dl></div></div>';
+}
+
+/* ---------- Install view ---------- */
+function scriptRevLabel() {
+  if (!app.savedRev) return 'unsaved';
+  return app.dirty ? app.savedRev + ' plus unsaved changes' : String(app.savedRev);
+}
+function buildScript() {
+  var c = clone(app.cfg);
+  c.rev = scriptRevLabel();
+  c.savedRev = app.savedRev;
+  c.savedAt = app.savedAt || '';
+  c.generatedAt = new Date().toISOString();
+  var head = [
+    '/**',
+    ' * PHARMACY INVOICE FORWARDER - Google Apps Script for Gmail',
+    ' * Settings version: ' + c.rev + (c.savedAt ? ' (saved ' + c.savedAt + ')' : '') + ', generated ' + c.generatedAt,
+    ' *',
+    ' * Do not edit this file by hand. Change settings on the Invoice Forwarder',
+    ' * setup page, copy the new script, and paste it over everything here.',
+    ' *',
+    ' * Functions to choose in the menu next to "Debug", then click Run:',
+    ' *   setup              run once after every paste (labels, timer, log sheet)',
+    ' *   dryRun             show what would happen to recent email; sends nothing',
+    ' *   sendTestToMyStore  send a test page to this store\'s fax and Teams',
+    ' *   checkSetup         show which store this account is, and any problems',
+    ' *   showLearnedLists   senders staff trusted or blocked with labels',
+    ' *   resetLearnedLists  forget those senders',
+    ' *   removeTimer        stop automatic runs (run setup to start again)',
+    ' */',
+    ''
+  ].join('\n');
+  return head + '/* CONFIG-START */\nvar CONFIG = ' + JSON.stringify(c, null, 2) + ';\n/* CONFIG-END */\n\n' + CORE_SRC + '\n' + GAS_SRC;
+}
+
+function readinessHtml() {
+  var w = IFCore.configWarnings_(app.cfg);
+  if (!w.length) return '<ul class="readiness"><li class="ok">Everything needed is filled in.</li></ul>';
+  var order = { error: 0, warn: 1, info: 2 };
+  w.sort(function (a, b) { return order[a.level] - order[b.level]; });
+  return '<ul class="readiness">' + w.map(function (x) { return '<li class="' + x.level + '">' + esc(x.text) + '</li>'; }).join('') + '</ul>';
+}
+
+function instructionsHtml() {
+  var c = app.cfg;
+  var mode = c.deliveryMode;
+  var faxOk = IFCore.faxConfigured_(c);
+  var teamsAny = c.defaultTeamsAddress || c.stores.some(function (s) { return s.teamsAddress; });
+  var gmails = c.stores.map(function (s) { return s.gmail; }).filter(Boolean);
+  var r = String(c.labelRoot || 'Invoice');
+  var dest = mode === 'fax' ? 'the store’s fax in PioneerRx' : mode === 'teams' ? 'the Teams channel' : 'PioneerRx (fax) and the Teams channel';
+  var item = function (ok, text) { return '<li><span class="' + (ok === null ? 'todo-item">Check: ' : ok ? 'ok-item">Done: ' : 'todo-item">To do: ') + '</span>' + text + '</li>'; };
+  var h = '';
+  h += '<h3>Before you install</h3><ol>';
+  if (mode !== 'teams') {
+    h += item(faxOk, 'Get the email-to-fax address format. Ask PioneerRx Support or your account manager whether SmartFax (etherFAX) can receive faxes sent by email from your store Gmail accounts, and what address to use. Enter it on the Where invoices go step.');
+    h += item(null, 'Ask the fax provider to allow these Gmail addresses as senders: ' + (gmails.length ? esc(gmails.join(', ')) : 'each store’s Gmail address (fill these in on the Stores step)') + '.');
+  }
+  if (mode !== 'fax') {
+    h += item(!!teamsAny, 'Get the Teams channel email address: open the channel, select More options (⋯), then Get email address. Under advanced settings, allow email from anyone or from gmail.com, since the script sends from your store Gmail accounts. If Get email address is missing, your Microsoft 365 admin needs to turn on channel email.');
+  }
+  h += item(IFCore.list_(c.reviewRecipients).length > 0, 'Decide who gets review notices, and enter them on the Where invoices go step.');
+  if (String(c.historyDocUrl || '').trim()) h += item(null, 'Share the change history document with each store’s Gmail as an editor' + (gmails.length ? ': ' + esc(gmails.join(', ')) : '') + '. Otherwise setup can’t add its entry.');
+  else h += item(false, 'Optional: link a change history Google Sheet or Doc on the Labels and schedule step, so every install and update is recorded there.');
+  h += item(app.savedRev > 0 && !app.dirty, 'Save settings, so the script has a version number you can track.');
+  h += '</ol>';
+
+  h += '<h3>Install in each store’s Gmail</h3><p>Repeat for each of the ' + c.stores.length + ' stores; it takes about 10 minutes each. Every store gets the same script. Use a separate Chrome profile or a private window, so you’re signed in to only that store’s Gmail.</p><ol>' +
+    '<li><b>Copy the script</b> with the Copy script button above.</li>' +
+    '<li><b>Open Apps Script.</b> Signed in as the store’s Gmail, go to <code>script.google.com</code> and choose New project. Click “Untitled project” at the top and name it Invoice Forwarder.</li>' +
+    '<li><b>Paste.</b> Click in the Code.gs editor, select everything (Ctrl+A, or Cmd+A on a Mac), delete it, and paste. Save with Ctrl+S (Cmd+S). The Run button stays greyed out until you save.</li>' +
+    (c.readPdfText ? '<li><b>Add the Drive service.</b> In the left sidebar, click + next to Services, choose Drive API, and click Add. The script uses it to read the text inside PDFs. Do this before running setup, so Google asks for every permission at once.</li>' : '') +
+    '<li><b>Run setup.</b> In the menu next to Debug, choose <code>setup</code>, then click Run. Google asks for permission: choose Review permissions, pick the store’s account, then Advanced, then Go to Invoice Forwarder (unsafe), then Allow. The warning appears because this is your own script rather than a published app.</li>' +
+    '<li><b>Check the log.</b> The Execution log at the bottom should say “Detected store:” and the store’s name' + (c.readPdfText ? ', and “Reading inside PDFs: on”' : '') + (String(c.historyDocUrl || '').trim() ? ', and “Added an entry to the change history document”' : '') + '. If it says the account isn’t listed, fix the store’s Gmail address on the Stores step, save, and paste the new script.</li>' +
+    '<li><b>Do a dry run.</b> Choose <code>dryRun</code> and click Run. The log lists what would happen to the last ' + c.dryRunHours + ' hours of email, without sending anything. Look for invoices it would miss (add the sender to the address book) and emails it would wrongly send (add an exclusion phrase).</li>' +
+    '<li><b>Send a test.</b> Choose <code>sendTestToMyStore</code> and click Run, then check that a one-page test reaches ' + dest + '.</li>' +
+    '<li><b>That’s it.</b> setup started a timer, so the script now checks new email every ' + c.runEveryMinutes + ' minutes. Gmail shows a new ' + esc(r) + ' label group' + (c.logToSheet ? ', and Google Drive has a sheet named “Invoice Forwarder Log”' : '') + '. Mark the store as installed in the table at the bottom of this page.</li></ol>';
+
+  h += '<h3>When settings change</h3><ol>' +
+    '<li>Make the change on this page and select Save settings. You’ll be asked for your name and a short note; both are kept with the version' + (String(c.historyDocUrl || '').trim() ? ' and added to the change history document when the script is installed' : '') + '.</li>' +
+    '<li>Copy the new script.</li>' +
+    '<li>In each store’s Gmail, go to <code>script.google.com</code>, open Invoice Forwarder, select everything in Code.gs, paste, and save.</li>' +
+    '<li>Choose <code>setup</code> and click Run. This refreshes the labels and the timer. Senders staff trusted or blocked are kept.' + (c.readPdfText ? ' If you just turned on reading inside PDFs, add the Drive service first (left sidebar, + next to Services, Drive API).' : '') + '</li>' +
+    '<li>Mark the store as installed with the new version below. A store left on an old version keeps the old settings.</li></ol>';
+
+  h += '<h3>Checking held emails (for staff)</h3><p>A review notice lists each held email with an Open in Gmail link. Open it while signed in to that store’s Gmail, then apply one label. On a computer, use the label button above the email; in the Gmail app, tap ⋮ and then Change labels. The script acts within ' + c.runEveryMinutes + ' minutes and removes the label.</p>' +
+    '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Label</th><th>Use it when</th></tr></thead><tbody>' +
+    labelList().filter(function (x) { return x[0] === 'staff'; }).map(function (x) { return '<tr><td><code>' + esc(x[1]) + '</code></td><td>' + esc(x[2]) + '</td></tr>'; }).join('') +
+    '</tbody></table></div><p>The same labels work on any email, not only held ones. If an invoice was missed, apply <code>' + esc(r) + '/Send</code> to forward it.</p>';
+
+  h += '<h3>So invoices aren’t missed</h3><ul>' +
+    '<li>When you onboard a wholesaler, add its sender to the address book as Always forward. This catches invoices that arrive in the message text or use unusual wording.</li>' +
+    '<li>Run <code>dryRun</code> in one store after changing keywords or exclusions, to see the effect on real email.</li>' +
+    '<li>Check the <code>' + esc(r) + '/Needs Review</code> and <code>' + esc(r) + '/Error</code> labels if no one has acted on a review notice.</li>' +
+    '<li>Every few weeks, run <code>showLearnedLists</code> in each store and copy those senders into the address book, so they apply to all stores.</li></ul>';
+
+  h += '<h3>If something isn’t working</h3><ul>' +
+    '<li><b>Run is greyed out:</b> save first (Ctrl+S), then pick a function in the menu next to Debug.</li>' +
+    '<li><b>Nothing is being forwarded:</b> in the Apps Script project, open Executions on the left to see errors. Run <code>dryRun</code> to see how recent emails are being sorted.</li>' +
+    '<li><b>Faxes don’t arrive:</b> the fax provider must allow the store’s Gmail address as a sender. Look for failure emails from the fax provider in the store’s inbox.</li>' +
+    '<li><b>Teams posts don’t appear:</b> check the channel’s email settings. Emails with more than 20 attachments, or an attachment over 10 MB, are rejected by Teams.</li>' +
+    '<li><b>Daily limit:</b> free Gmail accounts can send about 100 emails a day from scripts (Google Workspace accounts more). Each forwarded invoice uses one per destination: fax, Teams, and the copy address if set.</li>' +
+    '<li><b>Invoices go to the wrong store:</b> add that store’s full name and its account number with the wholesaler as store keywords. If the invoice names the store only inside the PDF, check that reading inside PDFs is on and that checkSetup reports the Drive service.</li>' +
+    '<li><b>An email has the Error label:</b> the review notice says why. Fix the cause, then apply <code>' + esc(r) + '/Send</code> to try again.</li></ul>';
+
+  h += '<h3>Turning it off</h3><p>In that store’s Apps Script project, choose <code>removeTimer</code> and click Run. To turn it back on, run <code>setup</code>.</p>';
+  return h;
+}
+
+function installTableHtml() {
+  var c = app.cfg;
+  var canMark = !!app.db && !app.readOnly && app.savedRev > 0;
+  var rows = c.stores.map(function (s, i) {
+    var inst = app.installs[s.id];
+    var status = '<span class="st-none">Not marked yet</span>';
+    if (inst) {
+      var cur = inst.rev === app.savedRev;
+      status = '<span class="' + (cur ? 'st-ok' : 'st-old') + '">' + (cur ? 'Up to date' : 'Needs update') + '</span><div class="hint">Version ' + esc(inst.rev) + ', ' + esc(fmtDate(inst.at)) + ((inst.name || inst.byName) ? ' by ' + esc(inst.name || inst.byName) : '') + '</div>';
+    }
+    return '<tr><td><b>' + esc(s.name || ('Store ' + (i + 1))) + '</b><div class="hint">' + esc(s.gmail || 'No Gmail address yet') + '</div></td><td>' + status + '</td><td>' +
+      (canMark ? '<button class="btn small" data-act="mark-installed" data-id="' + esc(s.id) + '">Mark installed with version ' + app.savedRev + '</button>' : '') + '</td></tr>';
+  }).join('');
+  var note = !app.db ? '<p class="hint">Install tracking needs saving, which isn’t available in this view.</p>' :
+    !app.savedRev ? '<p class="hint">Save settings first, so there’s a version number to mark.</p>' :
+    app.dirty ? '<p class="hint">You have unsaved changes. Save them before installing, so the version number matches.</p>' : '';
+  return note + '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Store</th><th>Installed version</th><th><span class="sr">Action</span></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+}
+
+function versionsHtml() {
+  if (!app.db) return '<p class="hint">Saved versions aren’t available in this view.</p>';
+  if (!app.versions.length) return '<p class="hint">No saved versions yet.</p>';
+  return '<div class="toolbar"><button class="btn small" data-act="copy-history">Copy history</button>' +
+    '<button class="btn small" data-act="dl-history" data-needs="downloads"' + (app.downloads ? '' : ' hidden') + '>Download history (.csv)</button></div>' +
+    '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Version</th><th>Saved</th><th>What changed</th><th><span class="sr">Action</span></th></tr></thead><tbody>' +
+    app.versions.map(function (v) {
+      var who = v.name || v.byName;
+      var ch = (v.changes || []);
+      return '<tr><td><b>' + esc(v.rev) + '</b>' + (v.rev === app.savedRev ? ' <span class="hint">current</span>' : '') + '</td>' +
+        '<td>' + esc(fmtDate(v.savedAt)) + (who ? '<div class="hint">by ' + esc(who) + '</div>' : '') + '</td>' +
+        '<td>' + (v.note ? esc(v.note) : '<span class="hint">No note</span>') +
+        (ch.length ? '<details class="inline"><summary>' + ch.length + ' change' + (ch.length === 1 ? '' : 's') + '</summary><ul>' + ch.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details>' : '') + '</td>' +
+        '<td>' + (v.rev === app.savedRev ? '' : '<button class="btn small" data-act="load-version" data-rev="' + esc(v.rev) + '">Load into the editor</button>') + '</td></tr>';
+    }).join('') + '</tbody></table></div><p class="hint">Loading an older version puts it in the editor. Save settings to make it current again. The list shows the latest 40 versions.</p>';
+}
+
+var installTimer = null;
+function renderInstall() {
+  var html = '<h2>Get the script</h2>' +
+    '<p class="lead">Copy the script, then follow the steps below in each store’s Gmail. The script is the same for every store; it works out which store it’s in from the Gmail address.</p>' +
+    '<div class="group"><h3>Check before installing</h3><div id="readiness">' + readinessHtml() + '</div></div>' +
+    '<div class="group"><h3>The script</h3><p id="scriptVersion"></p>' +
+    '<div class="toolbar"><button class="btn primary" data-act="copy-script">Copy script</button>' +
+    '<button class="btn" data-act="dl-script" data-needs="downloads" hidden>Download script</button>' +
+    '<button class="btn" data-act="dl-instr" data-needs="downloads" hidden>Download instructions</button></div>' +
+    '<textarea class="codebox" id="scriptOut" readonly spellcheck="false" aria-label="Generated Apps Script"></textarea></div>' +
+    '<div class="group instructions" id="instructions"></div>' +
+    '<div class="group"><h3>Where each store stands</h3><div id="installTable"></div></div>' +
+    '<div class="group"><h3>Saved versions</h3><div id="versions"></div></div>' +
+    '<div class="group"><h3>Backup and restore</h3><p>Keep a copy of these settings outside this page, or bring back settings from an installed script.</p>' +
+    '<div class="toolbar"><button class="btn" data-act="copy-settings">Copy settings</button><button class="btn" data-act="export" data-needs="downloads" hidden>Download settings</button></div>' +
+    '<details class="box"><summary>Load settings from a script or a settings file</summary>' +
+    '<label class="f"><span>Paste a whole generated script, or copied settings</span><textarea id="importText" rows="6" spellcheck="false"></textarea></label>' +
+    '<button class="btn" data-act="import">Load settings</button></details></div>';
+  $('#v-install').innerHTML = html;
+  refreshInstall();
+}
+function refreshInstall() {
+  if (!$('#scriptOut')) return;
+  $('#readiness').innerHTML = readinessHtml();
+  $('#scriptOut').value = buildScript();
+  $('#scriptVersion').textContent = app.savedRev ?
+    ('Settings version ' + scriptRevLabel() + (app.savedAt ? ', saved ' + fmtDate(app.savedAt) : '') + '.') :
+    'These settings haven’t been saved yet, so the script has no version number.';
+  $('#instructions').innerHTML = instructionsHtml();
+  $('#installTable').innerHTML = installTableHtml();
+  $('#versions').innerHTML = versionsHtml();
+  applyCapabilityVisibility();
+}
+function scheduleInstall() {
+  if (app.view !== 'install') return;
+  clearTimeout(installTimer);
+  installTimer = setTimeout(refreshInstall, 350);
+}
+
+/* ---------- Live updates ---------- */
+function updateFaxPreviews() {
+  $$('[data-faxprev]').forEach(function (el) {
+    var s = app.cfg.stores[Number(el.dataset.faxprev)];
+    if (!s) return;
+    var d = IFCore.faxDigits_(s.faxNumber);
+    if (!d) { el.textContent = ''; return; }
+    if (d.length !== 10) { el.textContent = 'Should be 10 digits (has ' + d.length + ')'; return; }
+    el.textContent = IFCore.faxConfigured_(app.cfg) ? 'Faxes go to ' + IFCore.faxAddress_(app.cfg, s.faxNumber) : 'Fax address will be ' + IFCore.faxAddress_(app.cfg, s.faxNumber) + ' once the provider format is set';
+  });
+  $$('[data-storetitle]').forEach(function (el) {
+    var i = Number(el.dataset.storetitle);
+    var s = app.cfg.stores[i];
+    if (s) el.textContent = s.name || ('Store ' + (i + 1));
+  });
+}
+function updateFaxState() {
+  var el = $('#faxState');
+  if (!el) return;
+  var ok = IFCore.faxConfigured_(app.cfg);
+  var t = String(app.cfg.faxAddressTemplate || '');
+  var msg = ok ? 'Ready. Example: ' + IFCore.faxAddress_(app.cfg, '5085550123') :
+    t.indexOf('{number}') < 0 ? 'Needs {number} where the fax number goes' : 'Placeholder. Nothing will be faxed until this is replaced';
+  el.innerHTML = '<span class="state ' + (ok ? 'ok' : 'todo') + '">' + esc(msg) + '</span>';
+}
+function refreshStoreSelects() {
+  $$('select[data-storeselect]').forEach(function (sel) {
+    var kind = sel.dataset.storeselect;
+    var cur = sel.value;
+    sel.innerHTML = storeOptions(kind, cur);
+    sel.value = cur;
+    if (sel.value !== cur) sel.selectedIndex = 0;
+  });
+}
+function updateBadge() {
+  var n = IFCore.configWarnings_(app.cfg).filter(function (w) { return w.level !== 'info'; }).length;
+  var b = $('#navBadge');
+  b.hidden = !n;
+  b.textContent = n + ' to fix';
+}
+function updateStatus() {
+  var el = $('#status');
+  var parts = [];
+  if (!app.loaded) parts.push('<span>Loading saved settings…</span>');
+  else if (app.dbMissing) parts.push('<span>Saving isn’t available here</span>');
+  else if (!app.savedRev) parts.push('<span>Not saved yet</span>');
+  else {
+    var who = app.cfg.savedByName && !app.dirty ? app.cfg.savedByName : (app.savedTypedName || app.savedByName);
+    parts.push('<span>Version ' + app.savedRev + ', saved ' + esc(fmtDate(app.savedAt)) + (who ? ' by ' + esc(who) : '') + '</span>');
+  }
+  if (app.dirty) parts.push('<span class="pill">Unsaved changes</span>');
+  if (app.readOnly) parts.push('<span class="pill">View only</span>');
+  el.innerHTML = parts.join('');
+  var btn = $('#saveBtn');
+  if (!app.saving) btn.disabled = false;
+}
+function changed() {
+  app.dirty = JSON.stringify(app.cfg) !== app.savedCfgJson;
+  updateStatus();
+  updateBadge();
+  updateFaxPreviews();
+  updateFaxState();
+  updateLabelPreview();
+  refreshStoreSelects();
+  if (app.view === 'test') renderTestResult();
+  scheduleInstall();
+  saveDraftSoon();
+}
+
+/* ---------- Draft (this browser only) ---------- */
+var draftTimer = null;
+function saveDraftSoon() {
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(function () {
+    try {
+      if (app.dirty) localStorage.setItem(DRAFT_KEY, JSON.stringify({ cfg: app.cfg, baseRev: app.savedRev, at: new Date().toISOString() }));
+      else localStorage.removeItem(DRAFT_KEY);
+    } catch (e) {}
+  }, 600);
+}
+function readDraft() { try { var v = localStorage.getItem(DRAFT_KEY); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch (e) {} }
+
+/* ---------- Rendering all ---------- */
+function renderAll() {
+  renderStores(); renderDelivery(); renderDetection(); renderSenders(); renderLabelsView(); renderTestView();
+  if (app.view === 'install') renderInstall();
+  updateStatus(); updateBadge();
+}
+function show(view) {
+  var valid = ['stores', 'delivery', 'detection', 'senders', 'labels', 'test', 'install'];
+  if (valid.indexOf(view) < 0) view = 'stores';
+  app.view = view;
+  $$('section[data-view]').forEach(function (s) { s.classList.toggle('active', s.dataset.view === view); });
+  $$('[data-nav]').forEach(function (a) { if (a.dataset.nav === view) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  if (view === 'install') renderInstall();
+  if (view === 'test') renderTestResult();
+  window.scrollTo(0, 0);
+  var cur = $('[data-nav="' + view + '"]');
+  if (cur && window.matchMedia('(max-width: 900px)').matches) { try { cur.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch (e) {} }
+}
+window.addEventListener('hashchange', function () { show(location.hash.slice(1)); });
+
+function setBanner(html) {
+  $('#banners').innerHTML = html ? '<div class="banner' + (html.indexOf('data-info') >= 0 ? ' info' : '') + '">' + html + '</div>' : '';
+}
+var toastTimer = null;
+function toast(text, actionLabel, action) {
+  var t = $('#toast');
+  $('#toastText').textContent = text;
+  var b = $('#toastAction');
+  b.hidden = !actionLabel;
+  b.textContent = actionLabel || '';
+  b.onclick = action ? function () { action(); t.classList.remove('show'); } : null;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { t.classList.remove('show'); }, actionLabel ? 8000 : 3500);
+}
+
+function loadConfig(cfg, meta) {
+  app.cfg = normalize(cfg);
+  if (meta) {
+    app.savedRev = meta.rev || 0;
+    app.savedAt = meta.savedAt || '';
+    app.savedBy = meta.savedBy || '';
+    app.savedTypedName = app.cfg.savedByName || '';
+    app.savedCfgJson = JSON.stringify(app.cfg);
+  }
+  app.dirty = JSON.stringify(app.cfg) !== app.savedCfgJson;
+  renderAll();
+  resolveNames();
+}
+
+/* ---------- Events ---------- */
+function onField(e) {
+  var el = e.target;
+  if (el.dataset && el.dataset.k) {
+    if (el.type === 'radio' && !el.checked) return;
+    setPath(app.cfg, el.dataset.k, readVal(el));
+    changed();
+  } else if (el.dataset && el.dataset.t) {
+    app.test[el.dataset.t] = el.type === 'checkbox' ? el.checked : el.value;
+    renderTestResult();
+  }
+}
+document.addEventListener('input', onField);
+document.addEventListener('change', onField);
+
+document.addEventListener('click', function (e) {
+  var b = e.target.closest('[data-act]');
+  if (!b) return;
+  var act = b.dataset.act;
+  var c = app.cfg;
+  if (act === 'add-store') {
+    var id = 's' + Date.now().toString(36);
+    c.stores.push({ id: id, name: 'Store ' + (c.stores.length + 1), gmail: '', faxNumber: '', teamsAddress: '', keywords: [] });
+    renderAll(); changed();
+    var last = $$('.store').pop();
+    if (last) { last.scrollIntoView({ block: 'center' }); var inp = $('input', last); if (inp) inp.focus(); }
+  } else if (act === 'remove-store') {
+    var i = Number(b.dataset.i);
+    var before = clone(c);
+    var removed = c.stores.splice(i, 1)[0];
+    c.addressBook.forEach(function (x) { if (x.store === removed.id) x.store = 'auto'; });
+    if (c.fallbackStoreId === removed.id) c.fallbackStoreId = '';
+    renderAll(); changed();
+    toast('Removed ' + (removed.name || 'store'), 'Undo', function () { app.cfg = before; renderAll(); changed(); });
+  } else if (act === 'add-sender') {
+    c.addressBook.push({ sender: '', vendor: '', action: 'forward', store: 'auto' });
+    renderSenders(); changed();
+    var rows = $$('.book tbody tr');
+    if (rows.length) $('input', rows[rows.length - 1]).focus();
+  } else if (act === 'remove-sender') {
+    var j = Number(b.dataset.i);
+    var prev = clone(c.addressBook);
+    var gone = c.addressBook.splice(j, 1)[0];
+    renderSenders(); changed();
+    toast('Removed ' + (gone.sender || 'sender'), 'Undo', function () { app.cfg.addressBook = prev; renderSenders(); changed(); });
+  } else if (act === 'paste-senders') {
+    var lines = ($('#bulkSenders').value || '').split('\n');
+    var added = 0, bad = [];
+    lines.forEach(function (line) {
+      if (!line.trim()) return;
+      var parts = line.split(',');
+      var sender = parts[0].trim();
+      if (!IFCore.validSender_(sender)) { bad.push(sender); return; }
+      c.addressBook.push({ sender: sender, vendor: parts.slice(1).join(',').trim(), action: 'forward', store: 'auto' });
+      added++;
+    });
+    renderSenders(); changed();
+    toast('Added ' + added + ' sender' + (added === 1 ? '' : 's') + (bad.length ? '. Skipped: ' + bad.join(', ') : ''));
+  } else if (act === 'add-keyword') {
+    var w = b.dataset.word;
+    if (c.keywords.map(function (k) { return k.toLowerCase(); }).indexOf(w.toLowerCase()) < 0) c.keywords.push(w);
+    renderDetection(); changed();
+  } else if (act === 'preset') {
+    Object.assign(app.test, PRESETS[b.dataset.p]);
+    renderTestView();
+  } else if (act === 'save') {
+    if (!app.db) { showSavingHelp(); toast(app.loaded ? 'Saving isn’t available here. See the note at the top of the page.' : 'Still connecting to saved settings. Try again in a moment.'); }
+    else if (app.readOnly) toast('You can view these settings but not save them. Ask the page owner for Contributor or Editor access.');
+    else if (!app.dirty && app.savedRev) toast('There are no changes to save.');
+    else openSaveDialog();
+  } else if (act === 'allow-saving') {
+    if (app.perms) app.perms.request(['db']).then(function (st) {
+      if (st && st.db === 'granted') location.reload(); else showSavingHelp();
+    });
+  } else if (act === 'open-perms') {
+    if (app.perms) app.perms.manage().then(function () { return app.perms.state('db'); }).then(function (st) {
+      if (st === 'granted') location.reload(); else showSavingHelp();
+    }, function () { toast('Open this artifact’s Permissions menu in claude.ai and allow it to store data.'); });
+  } else if (act === 'save-anyway') {
+    if (app.pendingSave) save(true, app.pendingSave);
+  } else if (act === 'copy-script') {
+    copyText(buildScript(), 'Script copied. Paste it into Code.gs in each store’s Apps Script project.');
+  } else if (act === 'copy-settings') {
+    copyText(JSON.stringify({ config: app.cfg, rev: app.savedRev, exportedAt: new Date().toISOString() }, null, 2), 'Settings copied.');
+  } else if (act === 'dl-script') {
+    download('invoice-forwarder-v' + (app.savedRev || 'unsaved') + '.txt', buildScript());
+  } else if (act === 'dl-instr') {
+    var doc = '<!doctype html><html><head><meta charset="utf-8"><title>Invoice forwarder install instructions</title>' +
+      '<style>body{font-family:Arial,sans-serif;max-width:760px;margin:32px auto;padding:0 16px;line-height:1.5}code{background:#eef;padding:1px 4px}table{border-collapse:collapse}td,th{border:1px solid #ccd;padding:6px;text-align:left}</style></head><body>' +
+      '<h1>Invoice forwarder install instructions</h1><p>Settings version ' + esc(scriptRevLabel()) + '</p>' + instructionsHtml() + '</body></html>';
+    download('invoice-forwarder-instructions.html', doc);
+  } else if (act === 'export') {
+    download('invoice-forwarder-settings-v' + (app.savedRev || 'unsaved') + '.json', JSON.stringify({ config: app.cfg, rev: app.savedRev, exportedAt: new Date().toISOString() }, null, 2));
+  } else if (act === 'import') {
+    try {
+      var cfg = parseImport($('#importText').value);
+      var keepRev = app.savedRev;
+      app.cfg = cfg;
+      app.savedRev = keepRev;
+      renderAll(); changed(); show('stores'); location.hash = 'stores';
+      toast('Settings loaded. Review them, then save.');
+    } catch (err) {
+      toast('Couldn’t read those settings: ' + err.message);
+    }
+  } else if (act === 'load-version') {
+    var rev = Number(b.dataset.rev);
+    var v = app.versions.filter(function (x) { return x.rev === rev; })[0];
+    if (v) { app.cfg = normalize(v.config); renderAll(); changed(); toast('Version ' + rev + ' is in the editor. Save settings to make it current.'); }
+  } else if (act === 'mark-installed') {
+    openInstallDialog(b.dataset.id);
+  } else if (act === 'copy-history') {
+    copyText(historyText('\t'), 'History copied. Paste it into a Google Sheet or Doc.');
+  } else if (act === 'dl-history') {
+    download('invoice-forwarder-history.csv', historyText(','));
+  } else if (act === 'discard-draft') {
+    clearDraft();
+    loadConfig(JSON.parse(app.savedCfgJson), null);
+    setBanner('');
+    toast('Unsaved changes discarded.');
+  } else if (act === 'load-remote') {
+    if (app.pendingRemote) applyRemote(app.pendingRemote);
+    setBanner('');
+  } else if (act === 'dismiss-banner') {
+    setBanner('');
+  }
+});
+
+function parseImport(text) {
+  text = String(text || '').trim();
+  if (!text) throw new Error('nothing was pasted');
+  var json = text;
+  var a = text.indexOf('/* CONFIG-START */');
+  if (a >= 0) {
+    var bEnd = text.indexOf('/* CONFIG-END */', a);
+    var seg = text.slice(a, bEnd > a ? bEnd : undefined);
+    json = seg.slice(seg.indexOf('=') + 1).trim().replace(/;\s*$/, '');
+  }
+  var obj = JSON.parse(json);
+  var c = obj && obj.config && obj.config.stores ? obj.config : obj;
+  if (!c || !Array.isArray(c.stores)) throw new Error('there’s no store list in it');
+  return normalize(c);
+}
+
+function copyText(text, okMsg) {
+  var done = function () { toast(okMsg); };
+  var fallback = function () {
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    if (ok) done();
+    else {
+      var box = $('#scriptOut');
+      if (box && text === box.value) { box.focus(); box.select(); toast('Press Ctrl+C (Cmd+C on a Mac) to copy the selected script.'); }
+      else toast('Copying isn’t allowed here. Select the text and copy it yourself.');
+    }
+  };
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback);
+    else fallback();
+  } catch (e) { fallback(); }
+}
+
+function download(filename, data) {
+  if (!app.downloads) {
+    if (window.claude) return;
+    // Opened outside claude.ai (for example from GitHub): use a normal browser download.
+    var url = URL.createObjectURL(new Blob([data], { type: 'text/plain;charset=utf-8' }));
+    var a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1000);
+    return;
+  }
+  app.downloads.save({ filename: filename, data: data }).then(function () {}, function (err) {
+    if (err && err.code === 'declined') return;
+    toast('The download didn’t start (' + ((err && err.code) || 'unavailable') + ').');
+  });
+}
+function applyCapabilityVisibility() {
+  $$('[data-needs="downloads"]').forEach(function (el) { el.hidden = !app.downloads && !!window.claude; });
+}
+
+/* ---------- Saving (shared for everyone with this page) ---------- */
+function save(force, meta) {
+  if (!app.db || app.readOnly) return;
+  meta = meta || { name: '', note: '', changes: [] };
+  var btn = $('#saveBtn');
+  app.saving = true;
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  var cur = app.db.doc('settings/current');
+  cur.get().then(function (snap) {
+    var data = snap.exists ? snap.data() : null;
+    var curRev = data ? Number(data.rev) || 0 : 0;
+    if (curRev > app.savedRev && !force) {
+      app.pendingRemote = data;
+      app.pendingSave = meta;
+      setBanner('<p>Version ' + curRev + ' was saved by someone else while you were editing. Saving now replaces it with your settings.</p>' +
+        '<button class="btn small" data-act="save-anyway">Save mine anyway</button><button class="btn small" data-act="load-remote">Load theirs instead</button>');
+      throw { code: 'conflict' };
+    }
+    var rev = curRev + 1;
+    var now = new Date().toISOString();
+    var config = clone(app.cfg);
+    var changes = meta.changes.length > 40 ? meta.changes.slice(0, 40).concat(['…and ' + (meta.changes.length - 40) + ' more']) : meta.changes;
+    config.rev = rev; config.savedAt = now;
+    config.savedByName = meta.name; config.changeNote = meta.note;
+    config.history = (app.cfg.history || []).concat([{ rev: rev, savedAt: now, name: meta.name, note: meta.note, changes: changes }]).slice(-15);
+    var body = { config: config, rev: rev, savedAt: now, savedBy: app.userId || '', savedByName: meta.name, note: meta.note, changes: changes };
+    return app.db.collection('versions').doc('v' + rev).set(body).then(function () {
+      return cur.set(body);
+    }).then(function () {
+      if (rev > 40) app.db.collection('versions').doc('v' + (rev - 40)).delete().catch(function () {});
+      app.cfg = config;
+      app.savedRev = rev; app.savedAt = now; app.savedBy = app.userId || '';
+      app.savedCfgJson = JSON.stringify(app.cfg);
+      app.savedTypedName = meta.name;
+      app.dirty = false;
+      app.pendingSave = null;
+      clearDraft();
+      setBanner('');
+      resolveNames();
+      toast('Saved as version ' + rev + '.');
+    });
+  }).catch(function (err) {
+    if (err && err.code === 'conflict') return;
+    if (err && err.code === 'invalid_argument') { app.readOnly = true; toast('You can view these settings but not save them. Ask the page owner for edit access.'); }
+    else if (err && err.code === 'quota_exceeded') toast('Saving failed: storage is full. ' + (err.message || ''));
+    else toast('Saving failed (' + ((err && err.code) || 'error') + '). Try again in a moment.');
+  }).then(function () {
+    btn.textContent = 'Save settings';
+    app.saving = false;
+    updateStatus();
+    scheduleInstall();
+  });
+}
+
+/* ---------- Dialogs ---------- */
+var modalOk = null;
+function openModal(o) {
+  $('#modalTitle').textContent = o.title;
+  $('#modalBody').innerHTML = o.body;
+  $('#modalOk').textContent = o.ok;
+  modalOk = o.onOk;
+  $('#modal').hidden = false;
+  var first = $('#modalBody input, #modalBody textarea');
+  if (first) first.focus();
+}
+function closeModal() { $('#modal').hidden = true; modalOk = null; }
+$('#modalCancel').addEventListener('click', closeModal);
+$('#modalOk').addEventListener('click', function () { if (modalOk && modalOk() !== false) closeModal(); });
+$('#modal').addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') closeModal();
+  if (e.key === 'Enter' && e.target.tagName === 'INPUT') { e.preventDefault(); $('#modalOk').click(); }
+});
+var NAME_KEY = 'invoice-forwarder-name';
+function rememberedName() { try { return localStorage.getItem(NAME_KEY) || app.profileName || ''; } catch (e) { return app.profileName || ''; } }
+function rememberName(n) { try { localStorage.setItem(NAME_KEY, n); } catch (e) {} }
+function nameField(hint) {
+  return '<label class="f"><span>Your name</span><input type="text" id="mName" value="' + esc(rememberedName()) + '" autocomplete="name"><small>' + hint + '</small></label>';
+}
+function readName() {
+  var el = $('#mName');
+  var n = el.value.trim();
+  if (!n) { el.classList.add('invalid'); el.focus(); toast('Enter your name first.'); return null; }
+  rememberName(n);
+  return n;
+}
+function openSaveDialog() {
+  if (!app.db || app.readOnly) return;
+  var prev = app.savedRev ? JSON.parse(app.savedCfgJson) : null;
+  var changes = describeChanges(prev, app.cfg);
+  openModal({
+    title: 'Save settings as version ' + (app.savedRev + 1),
+    body: nameField('Recorded with this version, so everyone can see who changed what.') +
+      '<label class="f"><span>What did you change, and why? (optional)</span><textarea id="mNote" rows="2" placeholder="Added the new wholesaler’s account numbers"></textarea></label>' +
+      '<div class="f-label">Changes in this version</div><ul class="changes">' + changes.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>',
+    ok: 'Save settings',
+    onOk: function () {
+      var n = readName();
+      if (!n) return false;
+      save(false, { name: n, note: $('#mNote').value.trim(), changes: changes });
+    }
+  });
+}
+function openInstallDialog(storeId) {
+  var s = IFCore.storeById_(app.cfg, storeId);
+  openModal({
+    title: 'Mark ' + (s ? s.name : 'store') + ' as installed',
+    body: '<p>Version ' + app.savedRev + ' of the settings, installed in ' + esc(s && s.gmail ? s.gmail : 'this store’s Gmail') + '.</p>' +
+      nameField('Who installed or updated the script.') +
+      '<label class="f"><span>Note (optional)</span><input type="text" id="mNote" placeholder="Dry run looked right; test fax arrived"></label>',
+    ok: 'Mark installed',
+    onOk: function () {
+      var n = readName();
+      if (!n) return false;
+      markInstalled(storeId, n, $('#mNote').value.trim());
+    }
+  });
+}
+
+/* ---------- What changed between two versions ---------- */
+var FIELD_LABELS = {
+  deliveryMode: 'Send invoices to', faxAddressTemplate: 'Fax provider format', faxBodyText: 'Fax cover text',
+  defaultTeamsAddress: 'Default Teams channel', reviewRecipients: 'Review notices go to', auditCopyAddress: 'Copy of everything goes to',
+  senderName: 'Sender name', keywords: 'Keywords', matchPoPatterns: 'Recognize purchase order numbers',
+  readPdfText: 'Read inside PDFs', pdfWording: 'Look for wording inside PDFs', exclusionPhrases: 'Exclusion phrases',
+  exclusionCheckBody: 'Check message text for exclusions', checkSpam: 'Check the Spam folder',
+  reviewUnknownAttachments: 'Hold attachments from unknown senders', attachmentTypes: 'Attachment types',
+  minImageKB: 'Skip images smaller than (KB)', bodyToPdf: 'Turn message text into a PDF', alwaysIncludeBody: 'Always add a message text page',
+  multiStoreMatch: 'If an email mentions several stores', fallbackStoreId: 'If the store can’t be worked out',
+  labelRoot: 'Label group name', systemTag: 'Tag on sent emails', runEveryMinutes: 'Check every (minutes)',
+  firstRunLookbackHours: 'First install look-back (hours)', dryRunHours: 'Dry run look-back (hours)',
+  logToSheet: 'Keep a log sheet', historyDocUrl: 'Change history document'
+};
+var RULE_LABELS = { subject: 'subject', attachment: 'attachment file name', body: 'message text only', pdf: 'inside a PDF only' };
+function describeChanges(a, b) {
+  if (!a) return ['First saved version'];
+  var out = [];
+  var short = function (s) { s = String(s); return s.length > 90 ? s.slice(0, 87) + '…' : s; };
+  var nameOf = function (cfg, id) { var s = IFCore.storeById_(cfg, id); return s ? s.name : id; };
+  var fmt = function (k, v, cfg) {
+    if (k === 'fallbackStoreId') return v ? nameOf(cfg, v) : 'hold for review';
+    if (k === 'deliveryMode') return { both: 'fax and Teams', fax: 'fax only', teams: 'Teams only' }[v] || v;
+    if (k === 'multiStoreMatch') return v === 'all' ? 'send to each' : 'hold for review';
+    if (Array.isArray(v)) return v.length ? short(v.join(', ')) : 'none';
+    if (typeof v === 'boolean') return v ? 'on' : 'off';
+    return v === '' || v == null ? 'blank' : short(v);
+  };
+  Object.keys(FIELD_LABELS).forEach(function (k) {
+    if (JSON.stringify(a[k]) !== JSON.stringify(b[k])) out.push(FIELD_LABELS[k] + ': ' + fmt(k, a[k], a) + ' → ' + fmt(k, b[k], b));
+  });
+  Object.keys(RULE_LABELS).forEach(function (k) {
+    var x = (a.rules || {})[k], y = (b.rules || {})[k];
+    if (x !== y) out.push('When wording is found in the ' + RULE_LABELS[k] + ': ' + (x === 'send' ? 'forward' : 'hold') + ' → ' + (y === 'send' ? 'forward' : 'hold'));
+  });
+  var storeFields = { name: 'name', gmail: 'Gmail', faxNumber: 'fax number', teamsAddress: 'Teams channel', keywords: 'keywords' };
+  var oldStores = {};
+  (a.stores || []).forEach(function (s) { oldStores[s.id] = s; });
+  (b.stores || []).forEach(function (s) {
+    var o = oldStores[s.id];
+    if (!o) { out.push('Added store ' + (s.name || s.id)); return; }
+    delete oldStores[s.id];
+    Object.keys(storeFields).forEach(function (f) {
+      if (JSON.stringify(o[f]) !== JSON.stringify(s[f])) out.push('Store ' + (s.name || o.name) + ', ' + storeFields[f] + ': ' + fmt(f, o[f]) + ' → ' + fmt(f, s[f]));
+    });
+  });
+  Object.keys(oldStores).forEach(function (id) { out.push('Removed store ' + (oldStores[id].name || id)); });
+  var key = function (e) { return String(e.sender || '').trim().toLowerCase(); };
+  var act = function (v) { return { forward: 'always forward', review: 'always hold for review', exclude: 'never forward' }[v] || v; };
+  var bookDesc = function (e, cfg) { return e.sender + (e.vendor ? ' (' + e.vendor + ')' : '') + ', ' + act(e.action) + ', store: ' + (e.store && e.store !== 'auto' ? nameOf(cfg, e.store) : 'automatic'); };
+  var oldBook = {};
+  (a.addressBook || []).forEach(function (e) { if (key(e)) oldBook[key(e)] = e; });
+  (b.addressBook || []).forEach(function (e) {
+    var k = key(e);
+    if (!k) return;
+    var o = oldBook[k];
+    if (!o) { out.push('Address book: added ' + bookDesc(e, b)); return; }
+    delete oldBook[k];
+    if (o.action !== e.action || o.store !== e.store || o.vendor !== e.vendor) out.push('Address book: ' + bookDesc(o, a) + ' → ' + bookDesc(e, b));
+  });
+  Object.keys(oldBook).forEach(function (k) { out.push('Address book: removed ' + bookDesc(oldBook[k], a)); });
+  return out.length ? out : ['No settings changed'];
+}
+
+function historyText(sep) {
+  var rows = [];
+  app.versions.forEach(function (v) {
+    rows.push({ t: v.savedAt, cells: ['Settings saved', v.rev, fmtDate(v.savedAt), v.name || v.byName || '', '', v.note || '', (v.changes || []).join('; ')] });
+  });
+  (app.installLog || []).forEach(function (x) {
+    rows.push({ t: x.at, cells: ['Marked installed', x.rev, fmtDate(x.at), x.name || '', x.storeName || '', x.note || '', ''] });
+  });
+  rows.sort(function (p, q) { return String(q.t).localeCompare(String(p.t)); });
+  var clean = function (v) {
+    v = String(v == null ? '' : v);
+    if (sep === '\t') return v.replace(/[\t\r\n]+/g, ' ');
+    return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  };
+  var head = ['Event', 'Version', 'Time', 'Name', 'Store', 'Note', 'What changed'];
+  return [head].concat(rows.map(function (r) { return r.cells; })).map(function (r) { return r.map(clean).join(sep); }).join('\n');
+}
+
+function applyRemote(data) {
+  app.pendingRemote = null;
+  loadConfig(data.config, { rev: data.rev, savedAt: data.savedAt, savedBy: data.savedBy });
+  clearDraft();
+}
+
+function markInstalled(storeId, name, note) {
+  if (!app.db || !app.savedRev) return;
+  var s = IFCore.storeById_(app.cfg, storeId);
+  var rec = { rev: app.savedRev, at: new Date().toISOString(), by: app.userId || '', name: name, note: note, storeId: storeId, storeName: s ? s.name : storeId };
+  app.db.collection('installs').doc(storeId).set(rec)
+    .then(function () { return app.db.collection('installLog').add(rec); })
+    .then(function () { toast('Marked as installed with version ' + app.savedRev + '.'); })
+    .catch(function (err) { toast('Couldn’t save that (' + ((err && err.code) || 'error') + ').'); });
+}
+
+function resolveNames() {
+  if (!app.user) { updateStatus(); return; }
+  var ids = [];
+  if (app.savedBy) ids.push(app.savedBy);
+  Object.keys(app.installs).forEach(function (k) { if (app.installs[k].by) ids.push(app.installs[k].by); });
+  app.versions.forEach(function (v) { if (v.savedBy) ids.push(v.savedBy); });
+  if (!ids.length) { updateStatus(); return; }
+  app.user.profiles(ids).then(function (ps) {
+    var nm = function (id) { return id && ps[id] ? ps[id].name || '' : ''; };
+    app.savedByName = nm(app.savedBy);
+    Object.keys(app.installs).forEach(function (k) { app.installs[k].byName = nm(app.installs[k].by); });
+    app.versions.forEach(function (v) { v.byName = nm(v.savedBy); });
+    updateStatus();
+    if (app.view === 'install' && $('#installTable')) { $('#installTable').innerHTML = installTableHtml(); $('#versions').innerHTML = versionsHtml(); }
+  });
+}
+
+function restoreDraftIfAny() {
+  var d = readDraft();
+  if (!d || !d.cfg) return;
+  if ((d.baseRev || 0) !== app.savedRev) { clearDraft(); return; }
+  var cfg = normalize(d.cfg);
+  var used = cfg.stores.filter(function (s) {
+    return !/^Store \d+$/.test(s.name || '') || s.gmail || s.faxNumber || s.teamsAddress || s.keywords.length;
+  });
+  if (used.length < cfg.stores.length && !app.savedRev) {
+    cfg.stores = used.length ? used : cfg.stores.slice(0, 1);
+    var ids = {}; cfg.stores.forEach(function (s) { ids[s.id] = 1; });
+    cfg.addressBook.forEach(function (e) { if (!ids[e.store]) e.store = 'auto'; });
+    if (cfg.fallbackStoreId && !ids[cfg.fallbackStoreId]) cfg.fallbackStoreId = '';
+  }
+  if (JSON.stringify(cfg) === app.savedCfgJson) { clearDraft(); return; }
+  app.cfg = cfg;
+  app.dirty = true;
+  renderAll();
+  setBanner('<p data-info>Your unsaved changes from ' + esc(fmtDate(d.at)) + ' were restored.</p><button class="btn small" data-act="discard-draft">Discard them</button>');
+}
+
+function startDb() {
+  var first = true;
+  app.db.doc('settings/current').onSnapshot(function (snap) {
+    var data = snap.exists ? snap.data() : null;
+    if (first) {
+      first = false;
+      app.loaded = true;
+      if (data && data.config && !app.dirty) loadConfig(data.config, { rev: data.rev, savedAt: data.savedAt, savedBy: data.savedBy });
+      else if (data && data.config && app.dirty) {
+        app.pendingRemote = data;
+        setBanner('<p>Saved settings (version ' + esc(data.rev) + ') finished loading after you started editing.</p><button class="btn small" data-act="load-remote">Load saved settings</button><button class="btn small" data-act="dismiss-banner">Keep my edits</button>');
+      }
+      restoreDraftIfAny();
+      updateStatus();
+      return;
+    }
+    if (!data || !data.config) return;
+    if ((Number(data.rev) || 0) <= app.savedRev) return;
+    if (!app.dirty) {
+      applyRemote(data);
+      toast('Version ' + data.rev + ' was just saved by someone else and is now loaded.');
+    } else {
+      app.pendingRemote = data;
+      setBanner('<p>Version ' + esc(data.rev) + ' was just saved by someone else. Loading it replaces your unsaved changes.</p><button class="btn small" data-act="load-remote">Load version ' + esc(data.rev) + '</button><button class="btn small" data-act="dismiss-banner">Keep editing</button>');
+    }
+  }, function () {
+    app.loaded = true; app.dbMissing = true; updateStatus();
+  });
+
+  app.db.collection('versions').orderBy('rev', 'desc').limit(40).onSnapshot(function (snap) {
+    app.versions = snap.docs.map(function (d) { var x = d.data(); return { rev: Number(x.rev) || 0, savedAt: x.savedAt, savedBy: x.savedBy, name: x.savedByName || '', note: x.note || '', changes: x.changes || [], config: x.config }; });
+    resolveNames();
+    if (app.view === 'install' && $('#versions')) { $('#versions').innerHTML = versionsHtml(); applyCapabilityVisibility(); }
+  }, function () {});
+
+  app.db.collection('installLog').orderBy('at', 'desc').limit(200).onSnapshot(function (snap) {
+    app.installLog = snap.docs.map(function (d) { return d.data(); });
+  }, function () {});
+
+  app.db.collection('installs').onSnapshot(function (snap) {
+    var m = {};
+    snap.docs.forEach(function (d) { m[d.id] = d.data(); });
+    app.installs = m;
+    resolveNames();
+    if (app.view === 'install' && $('#installTable')) $('#installTable').innerHTML = installTableHtml();
+  }, function () {});
+}
+
+/* ---------- Start ---------- */
+renderAll();
+show(location.hash.slice(1) || 'stores');
+
+function setSaveHelp(html) {
+  $('#saveHelp').innerHTML = html ? '<div class="banner' + (html.indexOf('data-info') >= 0 ? ' info' : '') + '">' + html + '</div>' : '';
+}
+function showSavingHelp() {
+  if (app.db) { setSaveHelp(''); return; }
+  if (!(window.claude && typeof window.claude.use === 'function')) {
+    setSaveHelp('<p data-info>Saving works only when this page is opened in claude.ai. This copy is opened somewhere else, so your changes stay in this browser. Open the page from its claude.ai link to save them for everyone.</p>');
+    return;
+  }
+  var p0 = app.perms ? Promise.resolve(app.perms) : window.claude.use('permissions');
+  p0.then(function (perms) {
+    app.perms = perms;
+    return perms ? perms.state('db') : 'unavailable';
+  }).then(function (st) {
+    if (st === 'denied') {
+      setSaveHelp('<p>Saving is turned off for this page, so your changes stay in this browser only.</p><button class="btn small" data-act="open-perms">Turn saving on</button>');
+    } else if (st === 'prompt') {
+      setSaveHelp('<p>Saving settings for everyone needs your permission.</p><button class="btn small" data-act="allow-saving">Allow saving</button>');
+    } else {
+      setSaveHelp('<p data-info>Saving isn’t available in this view. Open the page in claude.ai while signed in, from the chat or its claude.ai/artifact link, rather than a separate full-page tab or a downloaded copy. Until then, your changes stay in this browser.</p>');
+    }
+  }, function () {
+    setSaveHelp('<p data-info>Saving isn’t available in this view. Open the page in claude.ai while signed in. Until then, your changes stay in this browser.</p>');
+  });
+}
+function noSaving() {
+  if (app.db) return;
+  app.loaded = true; app.dbMissing = true;
+  restoreDraftIfAny();
+  updateStatus();
+  showSavingHelp();
+}
+
+var noDbTimer = setTimeout(noSaving, 11000);
+
+if (window.claude && typeof window.claude.use === 'function') {
+  window.claude.use('downloads').then(function (d) { app.downloads = d; applyCapabilityVisibility(); }, function () {});
+  window.claude.use('user').then(function (u) {
+    if (!u) return;
+    app.user = u;
+    u.id().then(function (id) { app.userId = id; });
+    u.me().then(function (me) { app.profileName = (me && me.name) || ''; });
+    u.can('data.write').then(function (can) { app.canWrite = can; if (can === false) { app.readOnly = true; updateStatus(); } });
+    resolveNames();
+  }, function () {});
+  window.claude.use('db').then(function (db) {
+    clearTimeout(noDbTimer);
+    if (!db) { noSaving(); return; }
+    app.db = db;
+    app.dbMissing = false;
+    setSaveHelp('');
+    startDb();
+  }, function () { clearTimeout(noDbTimer); noSaving(); });
+} else {
+  clearTimeout(noDbTimer);
+  noSaving();
+}
+})();
+</script>
+</body>
+</html>
